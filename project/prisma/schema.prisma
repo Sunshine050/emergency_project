@@ -1,0 +1,126 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["emergency_project"]
+}
+
+
+
+model User {
+  id                String             @id @default(uuid())
+  email             String             @unique
+  phone             String?
+  firstName         String
+  lastName          String
+  role              UserRole           @default(PATIENT)
+  status            UserStatus         @default(ACTIVE)
+  profileImageUrl   String?
+  supabaseUserId    String?            @unique
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  organizationId    String?
+  password          String?
+  emergencyRequests EmergencyRequest[] @relation("PatientRequests")
+  notifications     Notification[]
+  organization      Organization?      @relation(fields: [organizationId], references: [id])
+
+  @@map("users")
+  @@schema("emergency_project")
+}
+
+model Organization {
+  id                 String              @id @default(uuid())
+  name               String
+  type               String
+  address            String
+  city               String
+  state              String?
+  postalCode         String
+  latitude           Float?
+  longitude          Float?
+  contactPhone       String
+  contactEmail       String?
+  status             String              @default("ACTIVE")
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  emergencyResponses EmergencyResponse[]
+  users              User[]
+
+  @@map("organizations")
+  @@schema("emergency_project")
+}
+
+model EmergencyRequest {
+  id          String              @id @default(uuid())
+  status      String
+  description String
+  location    String?
+  latitude    Float?
+  longitude   Float?
+  medicalInfo Json?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  patientId   String
+  patient     User                @relation("PatientRequests", fields: [patientId], references: [id])
+  responses   EmergencyResponse[]
+
+  @@map("emergency_requests")
+  @@schema("emergency_project")
+}
+
+model EmergencyResponse {
+  id                 String           @id @default(uuid())
+  status             String
+  notes              String?
+  dispatchTime       DateTime?
+  arrivalTime        DateTime?
+  completionTime     DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  organizationId     String
+  emergencyRequestId String
+  emergencyRequest   EmergencyRequest @relation(fields: [emergencyRequestId], references: [id])
+  organization       Organization     @relation(fields: [organizationId], references: [id])
+
+  @@map("emergency_responses")
+  @@schema("emergency_project")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  type      String
+  title     String
+  body      String
+  isRead    Boolean  @default(false)
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+  @@schema("emergency_project")
+}
+
+enum UserRole {
+  PATIENT
+  EMERGENCY_CENTER
+  HOSPITAL
+  RESCUE_TEAM
+  ADMIN
+
+  @@schema("emergency_project")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+
+  @@schema("emergency_project")
+}
