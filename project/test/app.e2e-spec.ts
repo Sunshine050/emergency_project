@@ -1,0 +1,88 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { INestApplication } from '@nestjs/common';
+import * as request from 'supertest';
+import { AppModule } from '../src/app.module';
+import { PrismaService } from '../src/prisma/prisma.service';
+import { EmergencyGrade, EmergencyType } from '../src/sos/dto/sos.dto';
+
+describe('Emergency Response System (e2e)', () => {
+  let app: INestApplication;
+  let prismaService: PrismaService;
+  let authToken: string;
+
+  beforeAll(async () => {
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+
+    app = moduleFixture.createNestApplication();
+    prismaService = app.get<PrismaService>(PrismaService);
+    await app.init();
+
+    // Clean up the database before tests
+    await prismaService.cleanDatabase();
+  });
+
+  afterAll(async () => {
+    await prismaService.cleanDatabase();
+    await app.close();
+  });
+
+  describe('Authentication', () => {
+    it('should authenticate user and return JWT token', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({
+          provider: 'google',
+        })
+        .expect(200);
+
+      expect(response.body).toHaveProperty('url');
+    });
+  });
+
+  describe('Emergency Flow', () => {
+    it('should create emergency request and notify responders', async () => {
+      // First authenticate
+      const loginResponse = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({
+          provider: 'google',
+        });
+
+      authToken = loginResponse.body.url;
+
+      // Create emergency request
+      const emergencyResponse = await request(app.getHttpServer())
+        .post('/sos')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({
+          description: 'Car accident on main street',
+          latitude: 13.7563,
+          longitude: 100.5018,
+          grade: EmergencyGrade.URGENT,
+          type: EmergencyType.ACCIDENT,
+          medicalInfo: {
+            injuries: ['head trauma', 'broken arm'],
+            consciousness: 'conscious',
+          },
+        })
+        .expect(201);
+
+      expect(emergencyResponse.body).toHaveProperty('id');
+      const emergencyId = emergencyResponse.body.id;
+
+      // Check emergency status
+      const statusResponse = await request(app.getHttpServer())
+        .get(`/dashboard/active-emergencies`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(200);
+
+      expect(statusResponse.body).toContainEqual(
+        expect.objectContaining({
+          id: emergencyId,
+        }),
+      );
+    });
+  });
+});

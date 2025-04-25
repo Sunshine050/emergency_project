@@ -1,0 +1,19 @@
+import { Module } from '@nestjs/common';
+import { NotificationController } from './notification.controller';
+import { NotificationService } from './notification.service';
+import { NotificationGateway } from './notification.gateway';
+import { PrismaModule } from '../prisma/prisma.module';
+import { AuthModule } from '../auth/auth.module';
+import { JwtModule } from '@nestjs/jwt';
+
+@Module({
+  imports: [
+    PrismaModule,
+    AuthModule,
+    JwtModule.register({}), // เพิ่ม JwtModule ถ้าจำเป็นสำหรับ JwtService
+  ],
+  controllers: [NotificationController],
+  providers: [NotificationService, NotificationGateway],
+  exports: [NotificationService, NotificationGateway],
+})
+export class NotificationModule {}
