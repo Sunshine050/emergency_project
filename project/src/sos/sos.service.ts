@@ -84,63 +84,83 @@ export class SosService {
   }
 
   async updateStatus(id: string, updateStatusDto: UpdateEmergencyStatusDto) {
-    const emergency = await this.prisma.emergencyRequest.findUnique({
-      where: { id },
-      include: {
-        patient: true,
-        responses: {
-          include: {
-            organization: {
-              include: {
-                users: true,
+    const updatedEmergency = await this.prisma.$transaction(async (prisma) => {
+      const emergency = await prisma.emergencyRequest.findUnique({
+        where: { id },
+        include: {
+          patient: true,
+          responses: {
+            include: {
+              organization: {
+                include: {
+                  users: true,
+                },
               },
             },
           },
         },
-      },
-    });
+      });
 
-    if (!emergency) {
-      throw new NotFoundException("Emergency request not found");
-    }
-
-    const updatedEmergency = await this.prisma.emergencyRequest.update({
-      where: { id },
-      data: {
-        status: updateStatusDto.status,
-      },
-    });
-
-    await this.notificationService.createNotification({
-      type: "STATUS_UPDATE",
-      title: "Emergency Status Update",
-      body: `Your emergency request status has been updated to ${updateStatusDto.status}`,
-      userId: emergency.patientId,
-      metadata: {
-        emergencyId: emergency.id,
-        status: updateStatusDto.status,
-        notes: updateStatusDto.notes,
-      },
-    });
-
-    for (const response of emergency.responses) {
-      for (const user of response.organization.users) {
-        await this.notificationService.createNotification({
-          type: "STATUS_UPDATE",
-          title: "Emergency Status Update",
-          body: `Emergency request ${emergency.id} status updated to ${updateStatusDto.status}`,
-          userId: user.id,
-          metadata: {
-            emergencyId: emergency.id,
-            status: updateStatusDto.status,
-            notes: updateStatusDto.notes,
-          },
-        });
+      if (!emergency) {
+        throw new NotFoundException("Emergency request not found");
       }
-    }
+
+      console.log("Before update - Emergency:", emergency);
+
+      const updated = await prisma.emergencyRequest.update({
+        where: { id },
+        data: {
+          status: updateStatusDto.status,
+        },
+        include: {
+          patient: true,
+          responses: {
+            include: {
+              organization: {
+                include: {
+                  users: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      console.log("After update - Updated emergency:", updated);
+
+      await this.notificationService.createNotification({
+        type: "STATUS_UPDATE",
+        title: "Emergency Status Update",
+        body: `Your emergency request status has been updated to ${updateStatusDto.status}`,
+        userId: emergency.patientId,
+        metadata: {
+          emergencyId: emergency.id,
+          status: updateStatusDto.status,
+          notes: updateStatusDto.notes,
+        },
+      });
+
+      for (const response of emergency.responses) {
+        for (const user of response.organization.users) {
+          await this.notificationService.createNotification({
+            type: "STATUS_UPDATE",
+            title: "Emergency Status Update",
+            body: `Emergency request ${emergency.id} status updated to ${updateStatusDto.status}`,
+            userId: user.id,
+            metadata: {
+              emergencyId: emergency.id,
+              status: updateStatusDto.status,
+              notes: updateStatusDto.notes,
+            },
+          });
+        }
+      }
+
+      return updated;
+    });
 
     this.notificationGateway.broadcastStatusUpdate({
-      emergencyId: emergency.id,
+      emergencyId: updatedEmergency.id,
       status: updateStatusDto.status,
       notes: updateStatusDto.notes,
     });
@@ -173,7 +193,15 @@ export class SosService {
   async getEmergencyRequestById(id: string, userId: string) {
     const emergencyRequest = await this.prisma.emergencyRequest.findUnique({
       where: { id },
-      include: {
+      select: {
+        id: true,
+        status: true,
+        description: true,
+        location: true,
+        latitude: true,
+        longitude: true,
+        medicalInfo: true,
+        patientId: true,
         patient: true,
         responses: {
           include: {
@@ -182,6 +210,8 @@ export class SosService {
         },
       },
     });
+
+    console.log("Fetched emergency request:", emergencyRequest);
 
     if (!emergencyRequest) {
       throw new NotFoundException("Emergency request not found");

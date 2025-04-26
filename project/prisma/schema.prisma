@@ -55,9 +55,19 @@ model Organization {
   @@schema("emergency_project")
 }
 
+enum EmergencyStatus {
+  PENDING
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+
+  @@schema("emergency_project")
+}
+
 model EmergencyRequest {
   id          String              @id @default(uuid())
-  status      String
+  status      EmergencyStatus     @default(PENDING) // เปลี่ยนจาก String เป็น EmergencyStatus
   description String
   location    String?
   latitude    Float?
