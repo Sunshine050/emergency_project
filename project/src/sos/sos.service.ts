@@ -21,7 +21,6 @@ export class SosService {
     createSosDto: CreateEmergencyRequestDto,
     userId: string,
   ) {
-    // Create emergency request
     const emergencyRequest = await this.prisma.emergencyRequest.create({
       data: {
         status: EmergencyStatus.PENDING,
@@ -41,7 +40,6 @@ export class SosService {
       },
     });
 
-    // Find emergency centers, hospitals, and rescue teams
     const responders = await this.prisma.user.findMany({
       where: {
         role: {
@@ -55,7 +53,6 @@ export class SosService {
       },
     });
 
-    // Send notifications to all responders
     for (const responder of responders) {
       await this.notificationService.createNotification({
         type: "EMERGENCY",
@@ -72,7 +69,6 @@ export class SosService {
       });
     }
 
-    // Broadcast emergency to all responders via WebSocket
     this.notificationGateway.broadcastEmergency({
       id: emergencyRequest.id,
       type: createSosDto.type,
@@ -108,7 +104,6 @@ export class SosService {
       throw new NotFoundException("Emergency request not found");
     }
 
-    // Update emergency status
     const updatedEmergency = await this.prisma.emergencyRequest.update({
       where: { id },
       data: {
@@ -116,7 +111,6 @@ export class SosService {
       },
     });
 
-    // Notify patient
     await this.notificationService.createNotification({
       type: "STATUS_UPDATE",
       title: "Emergency Status Update",
@@ -129,7 +123,6 @@ export class SosService {
       },
     });
 
-    // Notify all involved organizations
     for (const response of emergency.responses) {
       for (const user of response.organization.users) {
         await this.notificationService.createNotification({
@@ -146,7 +139,6 @@ export class SosService {
       }
     }
 
-    // Broadcast status update via WebSocket
     this.notificationGateway.broadcastStatusUpdate({
       emergencyId: emergency.id,
       status: updateStatusDto.status,
@@ -154,5 +146,70 @@ export class SosService {
     });
 
     return updatedEmergency;
+  }
+
+  async getEmergencyRequests(userId: string) {
+    const emergencyRequests = await this.prisma.emergencyRequest.findMany({
+      where: {
+        patientId: userId,
+      },
+      include: {
+        patient: true,
+        responses: {
+          include: {
+            organization: true,
+          },
+        },
+      },
+    });
+
+    if (!emergencyRequests || emergencyRequests.length === 0) {
+      throw new NotFoundException("No emergency requests found for this user");
+    }
+
+    return emergencyRequests;
+  }
+
+  async getEmergencyRequestById(id: string, userId: string) {
+    const emergencyRequest = await this.prisma.emergencyRequest.findUnique({
+      where: { id },
+      include: {
+        patient: true,
+        responses: {
+          include: {
+            organization: true,
+          },
+        },
+      },
+    });
+
+    if (!emergencyRequest) {
+      throw new NotFoundException("Emergency request not found");
+    }
+
+    if (emergencyRequest.patientId !== userId) {
+      throw new NotFoundException("Emergency request not found");
+    }
+
+    return emergencyRequest;
+  }
+
+  async getAllEmergencyRequests() {
+    const emergencyRequests = await this.prisma.emergencyRequest.findMany({
+      include: {
+        patient: true,
+        responses: {
+          include: {
+            organization: true,
+          },
+        },
+      },
+    });
+
+    if (!emergencyRequests || emergencyRequests.length === 0) {
+      throw new NotFoundException("No emergency requests found");
+    }
+
+    return emergencyRequests;
   }
 }

@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Put, Param, UseGuards } from "@nestjs/common";
+import { Controller, Post, Get, Put, Param, Body, UseGuards } from "@nestjs/common";
 import { SosService } from "./sos.service";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
@@ -31,5 +31,23 @@ export class SosController {
     @Body() updateStatusDto: UpdateEmergencyStatusDto,
   ) {
     return this.sosService.updateStatus(id, updateStatusDto);
+  }
+
+  @Get()
+  @Roles(UserRole.PATIENT)
+  async getEmergencyRequests(@CurrentUser() user: any) {
+    return this.sosService.getEmergencyRequests(user.id);
+  }
+
+  @Get(':id')
+  @Roles(UserRole.PATIENT)
+  async getEmergencyRequestById(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.sosService.getEmergencyRequestById(id, user.id);
+  }
+
+  @Get('all')
+  @Roles(UserRole.EMERGENCY_CENTER, UserRole.HOSPITAL, UserRole.RESCUE_TEAM)
+  async getAllEmergencyRequests() {
+    return this.sosService.getAllEmergencyRequests();
   }
 }
