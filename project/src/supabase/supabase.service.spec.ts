@@ -1,9 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { UserService } from '../user/user.service';
-import { PrismaService } from '../prisma/prisma.service';
-import { NotFoundException } from '@nestjs/common';
+import { Test, TestingModule } from "@nestjs/testing";
+import { UserService } from "../user/user.service";
+import { PrismaService } from "../prisma/prisma.service";
+import { NotFoundException } from "@nestjs/common";
 
-describe('UserService', () => {
+describe("UserService", () => {
   let service: UserService;
   let prismaService: PrismaService;
 
@@ -29,73 +29,73 @@ describe('UserService', () => {
     prismaService = module.get<PrismaService>(PrismaService);
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(service).toBeDefined();
   });
 
-  describe('findOne', () => {
-    it('should return a user if found', async () => {
+  describe("findOne", () => {
+    it("should return a user if found", async () => {
       const mockUser = {
-        id: 'user-123',
-        email: 'test@example.com',
-        firstName: 'John',
-        lastName: 'Doe',
-        status: 'ACTIVE',
+        id: "user-123",
+        email: "test@example.com",
+        firstName: "John",
+        lastName: "Doe",
+        status: "ACTIVE",
       };
 
       mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
 
-      const result = await service.findOne('user-123');
+      const result = await service.findOne("user-123");
       expect(result).toEqual(mockUser);
     });
 
-    it('should throw NotFoundException if user not found', async () => {
+    it("should throw NotFoundException if user not found", async () => {
       mockPrismaService.user.findUnique.mockResolvedValue(null);
 
-      await expect(service.findOne('non-existent')).rejects.toThrow(
+      await expect(service.findOne("non-existent")).rejects.toThrow(
         NotFoundException,
       );
     });
   });
 
-  describe('updateProfile', () => {
+  describe("updateProfile", () => {
     const mockUser = {
-      id: 'user-123',
-      email: 'test@example.com',
-      firstName: 'John',
-      lastName: 'Doe',
+      id: "user-123",
+      email: "test@example.com",
+      firstName: "John",
+      lastName: "Doe",
       phone: null,
       medicalInfo: null,
     };
 
     const updateDto = {
-      firstName: 'Jane',
-      phone: '1234567890',
+      firstName: "Jane",
+      phone: "1234567890",
       medicalInfo: {
-        bloodType: 'A+',
-        allergies: ['peanuts'],
+        bloodType: "A+",
+        allergies: ["peanuts"],
       },
     };
 
-    it('should update user profile successfully', async () => {
+    it("should update user profile successfully", async () => {
       mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
       mockPrismaService.user.update.mockResolvedValue({
         ...mockUser,
         ...updateDto,
       });
 
-      const result = await service.updateProfile('user-123', updateDto);
+      const result = await service.updateProfile("user-123", updateDto);
 
       expect(result.firstName).toBe(updateDto.firstName);
       expect(result.phone).toBe(updateDto.phone);
       expect(result.medicalInfo).toEqual(updateDto.medicalInfo);
     });
 
-    it('should throw NotFoundException if user not found during update', async () => {
+    it("should throw NotFoundException if user not found during update", async () => {
       mockPrismaService.user.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.updateProfile('non-existent', updateDto),
+        service.updateProfile("non-existent", updateDto),
       ).rejects.toThrow(NotFoundException);
     });
   });

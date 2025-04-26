@@ -1,7 +1,7 @@
-import { } from './prisma.service';
+import {} from "./prisma.service";
 
-describe('prisma.service.ts', () => {
-  it('should be defined', () => {
+describe("prisma.service.ts", () => {
+  it("should be defined", () => {
     expect(true).toBeDefined();
   });
 });

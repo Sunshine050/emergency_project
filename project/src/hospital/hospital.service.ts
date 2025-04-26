@@ -1,11 +1,20 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { NotificationService } from '../notification/notification.service';
-import { CreateHospitalDto, UpdateHospitalDto, UpdateHospitalCapacityDto, AcceptEmergencyDto } from './dto/hospital.dto';
-import { EmergencyStatus } from '../sos/dto/sos.dto';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { NotificationService } from "../notification/notification.service";
+import {
+  CreateHospitalDto,
+  UpdateHospitalDto,
+  UpdateHospitalCapacityDto,
+  AcceptEmergencyDto,
+} from "./dto/hospital.dto";
+import { EmergencyStatus } from "../sos/dto/sos.dto";
 
 // กำหนด type สำหรับ QueryMode
-type QueryMode = 'default' | 'insensitive';
+type QueryMode = "default" | "insensitive";
 
 @Injectable()
 export class HospitalService {
@@ -18,18 +27,18 @@ export class HospitalService {
     return this.prisma.organization.create({
       data: {
         ...createHospitalDto,
-        type: 'HOSPITAL',
+        type: "HOSPITAL",
       },
     });
   }
 
   async findAll(search?: string) {
     const where = {
-      type: 'HOSPITAL',
+      type: "HOSPITAL",
       ...(search && {
         OR: [
-          { name: { contains: search, mode: 'insensitive' as QueryMode } },
-          { city: { contains: search, mode: 'insensitive' as QueryMode } },
+          { name: { contains: search, mode: "insensitive" as QueryMode } },
+          { city: { contains: search, mode: "insensitive" as QueryMode } },
         ],
       }),
     };
@@ -53,7 +62,7 @@ export class HospitalService {
     const hospital = await this.prisma.organization.findFirst({
       where: {
         id,
-        type: 'HOSPITAL',
+        type: "HOSPITAL",
       },
       include: {
         users: {
@@ -73,7 +82,7 @@ export class HospitalService {
     });
 
     if (!hospital) {
-      throw new NotFoundException('Hospital not found');
+      throw new NotFoundException("Hospital not found");
     }
 
     return {
@@ -96,11 +105,14 @@ export class HospitalService {
 
     return this.prisma.organization.update({
       where: { id },
-      data: { status: 'INACTIVE' },
+      data: { status: "INACTIVE" },
     });
   }
 
-  async updateCapacity(id: string, updateCapacityDto: UpdateHospitalCapacityDto) {
+  async updateCapacity(
+    id: string,
+    updateCapacityDto: UpdateHospitalCapacityDto,
+  ) {
     const hospital = await this.findOne(id);
 
     const medicalInfo = hospital.medicalInfo as Record<string, any> | null;
@@ -119,26 +131,29 @@ export class HospitalService {
     });
   }
 
-  async acceptEmergency(hospitalId: string, acceptEmergencyDto: AcceptEmergencyDto) {
+  async acceptEmergency(
+    hospitalId: string,
+    acceptEmergencyDto: AcceptEmergencyDto,
+  ) {
     const hospital = await this.findOne(hospitalId);
-    
+
     const emergency = await this.prisma.emergencyRequest.findUnique({
       where: { id: acceptEmergencyDto.emergencyId },
       include: { patient: true },
     });
 
     if (!emergency) {
-      throw new NotFoundException('Emergency request not found');
+      throw new NotFoundException("Emergency request not found");
     }
 
     if (emergency.status !== EmergencyStatus.PENDING) {
-      throw new BadRequestException('Emergency request is no longer pending');
+      throw new BadRequestException("Emergency request is no longer pending");
     }
 
     // Create emergency response
     const response = await this.prisma.emergencyResponse.create({
       data: {
-        status: 'ACCEPTED',
+        status: "ACCEPTED",
         notes: acceptEmergencyDto.notes,
         organizationId: hospitalId,
         emergencyRequestId: emergency.id,
@@ -153,8 +168,8 @@ export class HospitalService {
 
     // Notify patient
     await this.notificationService.createNotification({
-      type: 'EMERGENCY_ACCEPTED',
-      title: 'Hospital Accepted Your Emergency',
+      type: "EMERGENCY_ACCEPTED",
+      title: "Hospital Accepted Your Emergency",
       body: `${hospital.name} has accepted your emergency request`,
       userId: emergency.patient.id,
       metadata: {
@@ -167,7 +182,11 @@ export class HospitalService {
     return response;
   }
 
-  async findNearbyHospitals(latitude: number, longitude: number, radius: number = 10) {
+  async findNearbyHospitals(
+    latitude: number,
+    longitude: number,
+    radius: number = 10,
+  ) {
     // Using Haversine formula to calculate distance
     const hospitals = await this.prisma.$queryRaw`
       SELECT 

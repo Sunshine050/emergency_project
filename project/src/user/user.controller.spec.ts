@@ -1,7 +1,7 @@
-import { } from './user.controller';
+import {} from "./user.controller";
 
-describe('user.controller.ts', () => {
-  it('should be defined', () => {
+describe("user.controller.ts", () => {
+  it("should be defined", () => {
     expect(true).toBeDefined();
   });
 });

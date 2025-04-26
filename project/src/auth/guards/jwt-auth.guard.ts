@@ -1,10 +1,14 @@
-import { Injectable, ExecutionContext, UnauthorizedException } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
-import { Reflector } from '@nestjs/core';
-import { Observable } from 'rxjs';
+import {
+  Injectable,
+  ExecutionContext,
+  UnauthorizedException,
+} from "@nestjs/common";
+import { AuthGuard } from "@nestjs/passport";
+import { Reflector } from "@nestjs/core";
+import { Observable } from "rxjs";
 
 @Injectable()
-export class JwtAuthGuard extends AuthGuard('jwt') {
+export class JwtAuthGuard extends AuthGuard("jwt") {
   constructor(private reflector: Reflector) {
     super();
   }
@@ -18,16 +22,16 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     context: ExecutionContext,
   ): boolean | Promise<boolean> | Observable<boolean> {
     // Check if the route has the IS_PUBLIC_KEY metadata
-    const isPublic = this.reflector.getAllAndOverride<boolean>('isPublic', [
+    const isPublic = this.reflector.getAllAndOverride<boolean>("isPublic", [
       context.getHandler(),
       context.getClass(),
     ]);
-    
+
     // If route is marked as public, allow access without authentication
     if (isPublic) {
       return true;
     }
-    
+
     // Otherwise, use the parent AuthGuard to check JWT token
     return super.canActivate(context);
   }
@@ -41,9 +45,9 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   handleRequest(err: any, user: any, info: any) {
     // If authentication failed or no user was found
     if (err || !user) {
-      throw err || new UnauthorizedException('Authentication required');
+      throw err || new UnauthorizedException("Authentication required");
     }
-    
+
     return user;
   }
 }

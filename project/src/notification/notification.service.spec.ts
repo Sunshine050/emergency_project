@@ -1,9 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { NotificationService } from './notification.service';
-import { NotificationGateway } from './notification.gateway';
-import { PrismaService } from '../prisma/prisma.service';
+import { Test, TestingModule } from "@nestjs/testing";
+import { NotificationService } from "./notification.service";
+import { NotificationGateway } from "./notification.gateway";
+import { PrismaService } from "../prisma/prisma.service";
 
-describe('NotificationService', () => {
+describe("NotificationService", () => {
   let service: NotificationService;
   let prismaService: PrismaService;
   let notificationGateway: NotificationGateway;
@@ -41,22 +41,22 @@ describe('NotificationService', () => {
     notificationGateway = module.get<NotificationGateway>(NotificationGateway);
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(service).toBeDefined();
   });
 
-  describe('createNotification', () => {
+  describe("createNotification", () => {
     const createDto = {
-      type: 'EMERGENCY',
-      title: 'New Emergency',
-      body: 'Emergency request received',
-      userId: 'user-123',
-      metadata: { emergencyId: 'emergency-123' },
+      type: "EMERGENCY",
+      title: "New Emergency",
+      body: "Emergency request received",
+      userId: "user-123",
+      metadata: { emergencyId: "emergency-123" },
     };
 
-    it('should create notification and send via WebSocket', async () => {
+    it("should create notification and send via WebSocket", async () => {
       const mockNotification = {
-        id: 'notification-123',
+        id: "notification-123",
         ...createDto,
         isRead: false,
         createdAt: new Date(),
@@ -70,36 +70,36 @@ describe('NotificationService', () => {
       expect(result).toEqual(mockNotification);
       expect(mockNotificationGateway.sendToUser).toHaveBeenCalledWith(
         createDto.userId,
-        'notification',
+        "notification",
         mockNotification,
       );
     });
   });
 
-  describe('markAsRead', () => {
-    it('should mark notification as read', async () => {
+  describe("markAsRead", () => {
+    it("should mark notification as read", async () => {
       const mockNotification = {
-        id: 'notification-123',
+        id: "notification-123",
         isRead: true,
         updatedAt: new Date(),
       };
 
       mockPrismaService.notification.update.mockResolvedValue(mockNotification);
 
-      const result = await service.markAsRead('notification-123', 'user-123');
+      const result = await service.markAsRead("notification-123", "user-123");
       expect(result.isRead).toBe(true);
     });
   });
 
-  describe('markAllAsRead', () => {
-    it('should mark all notifications as read for user', async () => {
+  describe("markAllAsRead", () => {
+    it("should mark all notifications as read for user", async () => {
       mockPrismaService.notification.updateMany.mockResolvedValue({ count: 5 });
 
-      await service.markAllAsRead('user-123');
+      await service.markAllAsRead("user-123");
 
       expect(mockPrismaService.notification.updateMany).toHaveBeenCalledWith({
         where: {
-          userId: 'user-123',
+          userId: "user-123",
           isRead: false,
         },
         data: {

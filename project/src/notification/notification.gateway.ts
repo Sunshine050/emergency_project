@@ -4,12 +4,12 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect,
   OnGatewayInit,
-} from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
-import { Logger } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { AuthService } from '../auth/auth.service';
-import { PrismaService } from '../prisma/prisma.service';
+} from "@nestjs/websockets";
+import { Server, Socket } from "socket.io";
+import { Logger } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { AuthService } from "../auth/auth.service";
+import { PrismaService } from "../prisma/prisma.service";
 
 // กำหนด interface TokenPayload
 interface TokenPayload {
@@ -23,15 +23,17 @@ interface TokenPayload {
 
 @WebSocketGateway({
   cors: {
-    origin: '*', // In production, replace with actual frontend domain
-    methods: ['GET', 'POST'],
+    origin: "*", // In production, replace with actual frontend domain
+    methods: ["GET", "POST"],
     credentials: true,
   },
-  namespace: '/notifications',
+  namespace: "/notifications",
 })
-export class NotificationGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+export class NotificationGateway
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer() server: Server;
-  private logger = new Logger('NotificationGateway');
+  private logger = new Logger("NotificationGateway");
   private userSocketMap: Map<string, Set<string>> = new Map();
 
   constructor(
@@ -41,7 +43,7 @@ export class NotificationGateway implements OnGatewayInit, OnGatewayConnection, 
   ) {}
 
   afterInit(server: Server) {
-    this.logger.log('Notification WebSocket Gateway initialized');
+    this.logger.log("Notification WebSocket Gateway initialized");
   }
 
   async handleConnection(client: Socket) {
@@ -60,10 +62,10 @@ export class NotificationGateway implements OnGatewayInit, OnGatewayConnection, 
 
       // Store socket connection
       this.storeUserSocket(user.id, client.id);
-      
+
       // Join user-specific room
       client.join(`user:${user.id}`);
-      
+
       // Join role-based room
       if (user.role) {
         client.join(`role:${user.role}`);
@@ -82,12 +84,12 @@ export class NotificationGateway implements OnGatewayInit, OnGatewayConnection, 
   }
 
   private extractToken(client: Socket): string | null {
-    const auth = client.handshake.auth.token || 
-                 client.handshake.headers.authorization;
-                 
+    const auth =
+      client.handshake.auth.token || client.handshake.headers.authorization;
+
     if (!auth) return null;
-    
-    return auth.replace('Bearer ', '');
+
+    return auth.replace("Bearer ", "");
   }
 
   private async validateToken(token: string): Promise<TokenPayload | null> {
@@ -133,13 +135,13 @@ export class NotificationGateway implements OnGatewayInit, OnGatewayConnection, 
 
   broadcastEmergency(data: any) {
     this.server
-      .to('role:EMERGENCY_CENTER')
-      .to('role:HOSPITAL')
-      .to('role:RESCUE_TEAM')
-      .emit('emergency', data);
+      .to("role:EMERGENCY_CENTER")
+      .to("role:HOSPITAL")
+      .to("role:RESCUE_TEAM")
+      .emit("emergency", data);
   }
 
   broadcastStatusUpdate(data: any) {
-    this.server.emit('status-update', data);
+    this.server.emit("status-update", data);
   }
 }

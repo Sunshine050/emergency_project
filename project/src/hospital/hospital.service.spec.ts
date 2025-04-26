@@ -1,9 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { HospitalService } from './hospital.service';
-import { PrismaService } from '../prisma/prisma.service';
-import { NotificationService } from '../notification/notification.service';
+import { Test, TestingModule } from "@nestjs/testing";
+import { HospitalService } from "./hospital.service";
+import { PrismaService } from "../prisma/prisma.service";
+import { NotificationService } from "../notification/notification.service";
 
-describe('HospitalService', () => {
+describe("HospitalService", () => {
   let service: HospitalService;
   let prismaService: PrismaService;
   let notificationService: NotificationService;
@@ -38,27 +38,27 @@ describe('HospitalService', () => {
     notificationService = module.get<NotificationService>(NotificationService);
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(service).toBeDefined();
   });
 
-  describe('create', () => {
-    it('should create a hospital successfully', async () => {
+  describe("create", () => {
+    it("should create a hospital successfully", async () => {
       const createDto = {
-        name: 'Test Hospital',
-        address: '123 Test St',
-        city: 'Test City',
-        postalCode: '12345',
-        contactPhone: '123-456-7890',
+        name: "Test Hospital",
+        address: "123 Test St",
+        city: "Test City",
+        postalCode: "12345",
+        contactPhone: "123-456-7890",
         latitude: 13.7563,
         longitude: 100.5018,
       };
 
       const mockHospital = {
-        id: 'hospital-123',
+        id: "hospital-123",
         ...createDto,
-        type: 'HOSPITAL',
-        status: 'ACTIVE',
+        type: "HOSPITAL",
+        status: "ACTIVE",
       };
 
       mockPrismaService.organization.create.mockResolvedValue(mockHospital);
@@ -69,7 +69,7 @@ describe('HospitalService', () => {
       expect(mockPrismaService.organization.create).toHaveBeenCalledWith({
         data: {
           ...createDto,
-          type: 'HOSPITAL',
+          type: "HOSPITAL",
         },
       });
     });

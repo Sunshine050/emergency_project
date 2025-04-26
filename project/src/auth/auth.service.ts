@@ -5,16 +5,20 @@ import {
   Logger,
   BadRequestException,
   ConflictException,
-} from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { PrismaService } from '../prisma/prisma.service';
-import { SupabaseUser, TokenPayload, AuthTokens } from '../common/interfaces/auth.interface';
-import { UserRole, UserStatus } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
-import { RegisterDto, LoginDto } from './dto/auth.dto';
-import { config } from 'dotenv';
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { JwtService } from "@nestjs/jwt";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { PrismaService } from "../prisma/prisma.service";
+import {
+  SupabaseUser,
+  TokenPayload,
+  AuthTokens,
+} from "../common/interfaces/auth.interface";
+import { UserRole, UserStatus } from "@prisma/client";
+import * as bcrypt from "bcrypt";
+import { RegisterDto, LoginDto } from "./dto/auth.dto";
+import { config } from "dotenv";
 config();
 
 @Injectable()
@@ -28,20 +32,20 @@ export class AuthService {
     private readonly prisma: PrismaService,
   ) {
     this.supabase = createClient(
-      this.configService.get<string>('SUPABASE_URL'),
-      this.configService.get<string>('SUPABASE_SERVICE_ROLE_KEY'),
+      this.configService.get<string>("SUPABASE_URL"),
+      this.configService.get<string>("SUPABASE_SERVICE_ROLE_KEY"),
     );
   }
 
   /**
-   * ลงทะเบียนผู้ใช้ใหม่ด้วยอีเมลและรหัสผ่าน (สำหรับเจ้าหน้าที่)
+   * Register a new user with email and password (for staff)
    */
   async register(registerDto: RegisterDto) {
-    this.logger.log(`ลงทะเบียนผู้ใช้ใหม่: ${registerDto.email}`);
+    this.logger.log(`Registering new user: ${registerDto.email}`);
 
     const { email, password, firstName, lastName, phone, role } = registerDto;
 
-    // ตรวจสอบบทบาท (ไม่อนุญาต PATIENT สำหรับการลงทะเบียนแบบปกติ)
+    // Validate role (PATIENT not allowed for regular registration)
     const allowedRoles: UserRole[] = [
       UserRole.EMERGENCY_CENTER,
       UserRole.HOSPITAL,
@@ -49,30 +53,30 @@ export class AuthService {
       UserRole.ADMIN,
     ];
     if (role && !allowedRoles.includes(role)) {
-      this.logger.warn(`บทบาทไม่ได้รับอนุญาต: ${role}`);
-      throw new BadRequestException('บทบาทนี้ไม่สามารถลงทะเบียนด้วยวิธีนี้ได้');
+      this.logger.warn(`Role not allowed: ${role}`);
+      throw new BadRequestException("This role cannot be registered this way");
     }
 
     try {
-      // ตรวจสอบว่าอีเมลมีอยู่แล้วหรือไม่
+      // Check if email already exists
       const existingUser = await this.prisma.user.findUnique({
         where: { email },
       });
 
       if (existingUser) {
-        this.logger.warn(`อีเมล ${email} มีอยู่แล้ว`);
-        throw new ConflictException('อีเมลนี้ถูกใช้งานแล้ว');
+        this.logger.warn(`Email already exists: ${email}`);
+        throw new ConflictException("This email is already in use");
       }
 
-      // เข้ารหัสรหัสผ่าน
+      // Hash password
       const saltRounds = 10;
       const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-      // สร้างผู้ใช้ใหม่
+      // Create new user
       const user = await this.prisma.user.create({
         data: {
           email,
-          password: hashedPassword, // ฟิลด์ password มีใน schema
+          password: hashedPassword,
           firstName,
           lastName,
           phone: phone || null,
@@ -81,55 +85,55 @@ export class AuthService {
         },
       });
 
-      this.logger.log(`สร้างผู้ใช้ใหม่สำเร็จ: ${user.id}`);
+      this.logger.log(`Successfully created new user: ${user.id}`);
       return user;
     } catch (error) {
-      this.logger.error(`ข้อผิดพลาดในการลงทะเบียน: ${error.message}`, error.stack);
+      this.logger.error(`Error during registration: ${error.message}`, error.stack);
       throw error instanceof ConflictException
         ? error
-        : new InternalServerErrorException('ไม่สามารถลงทะเบียนผู้ใช้ได้');
+        : new InternalServerErrorException("Cannot register user");
     }
   }
 
   /**
-   * ล็อกอินด้วยอีเมลและรหัสผ่าน
+   * Login with email and password
    */
   async login(loginDto: LoginDto): Promise<AuthTokens> {
-    this.logger.log(`ล็อกอินผู้ใช้: ${loginDto.email}`);
+    this.logger.log(`Logging in user: ${loginDto.email}`);
 
     const { email, password } = loginDto;
 
     try {
-      // ค้นหาผู้ใช้และเลือก password
+      // Find user and select password
       const user = await this.prisma.user.findUnique({
         where: { email },
         select: {
           id: true,
           email: true,
-          password: true, // เลือกฟิลด์ password
+          password: true,
           role: true,
           status: true,
         },
       });
 
       if (!user || !user.password) {
-        this.logger.warn(`ไม่พบผู้ใช้หรือผู้ใช้ไม่มีรหัสผ่าน: ${email}`);
-        throw new UnauthorizedException('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+        this.logger.warn(`User not found or no password set: ${email}`);
+        throw new UnauthorizedException("Invalid email or password");
       }
 
-      // ตรวจสอบรหัสผ่าน
+      // Verify password
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
-        this.logger.warn(`รหัสผ่านไม่ถูกต้องสำหรับ: ${email}`);
-        throw new UnauthorizedException('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+        this.logger.warn(`Invalid password for: ${email}`);
+        throw new UnauthorizedException("Invalid email or password");
       }
 
       if (user.status !== UserStatus.ACTIVE) {
-        this.logger.warn(`ผู้ใช้ไม่ใช้งาน: ${email}`);
-        throw new UnauthorizedException('บัญชีนี้ถูกปิดใช้งาน');
+        this.logger.warn(`User is not active: ${email}`);
+        throw new UnauthorizedException("This account is disabled");
       }
 
-      // สร้าง JWT token
+      // Generate JWT token
       const payload: TokenPayload = {
         sub: user.id,
         email: user.email,
@@ -138,24 +142,24 @@ export class AuthService {
 
       const accessToken = this.jwtService.sign(payload);
 
-      // สร้าง refresh token โดยใช้ JWT
+      // Generate refresh token using JWT
       const refreshToken = this.jwtService.sign(payload, {
-        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-        expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '30d'),
+        secret: this.configService.get<string>("JWT_REFRESH_SECRET"),
+        expiresIn: this.configService.get<string>("JWT_REFRESH_EXPIRES_IN", "30d"),
       });
 
-      this.logger.log(`ล็อกอินสำเร็จสำหรับผู้ใช้: ${user.id}`);
+      this.logger.log(`Login successful for user: ${user.id}`);
       return {
         access_token: accessToken,
         refresh_token: refreshToken,
-        token_type: 'Bearer',
-        expires_in: parseInt(this.configService.get('JWT_EXPIRES_IN', '604800')),
+        token_type: "Bearer",
+        expires_in: parseInt(this.configService.get("JWT_EXPIRES_IN", "604800")),
       };
     } catch (error) {
-      this.logger.error(`ข้อผิดพลาดในการล็อกอิน: ${error.message}`, error.stack);
+      this.logger.error(`Error during login: ${error.message}`, error.stack);
       throw error instanceof UnauthorizedException
         ? error
-        : new InternalServerErrorException('ไม่สามารถล็อกอินได้');
+        : new InternalServerErrorException("Cannot login");
     }
   }
 
@@ -163,17 +167,17 @@ export class AuthService {
    * Generates an authorization URL for the specified OAuth provider
    */
   async generateAuthUrl(provider: string): Promise<string> {
-    const validProviders = ['google', 'facebook', 'apple'];
+    const validProviders = ["google", "facebook", "apple"];
 
-    this.logger.log(`สร้าง auth URL สำหรับ provider: ${provider}`);
+    this.logger.log(`Generating auth URL for provider: ${provider}`);
 
     if (!validProviders.includes(provider)) {
-      this.logger.error(`ไม่รองรับ provider: ${provider}`);
-      throw new BadRequestException(`ไม่รองรับ provider: ${provider}`);
+      this.logger.error(`Unsupported provider: ${provider}`);
+      throw new BadRequestException(`Unsupported provider: ${provider}`);
     }
 
     try {
-      const redirectUrl = this.configService.get<string>('OAUTH_REDIRECT_URL');
+      const redirectUrl = this.configService.get<string>("OAUTH_REDIRECT_URL");
       this.logger.log(`Redirect URL: ${redirectUrl}`);
 
       const { data, error } = await this.supabase.auth.signInWithOAuth({
@@ -181,22 +185,25 @@ export class AuthService {
         options: {
           redirectTo: redirectUrl,
           queryParams: {
-            response_type: 'code',
-            access_type: 'offline',
+            response_type: "code",
+            access_type: "offline",
           },
         },
       });
 
       if (error) {
-        this.logger.error(`ไม่สามารถสร้าง auth URL: ${error.message}`);
-        throw new InternalServerErrorException('ไม่สามารถสร้าง URL การยืนยันตัวตน');
+        this.logger.error(`Cannot generate auth URL: ${error.message}`);
+        throw new InternalServerErrorException("Cannot generate authentication URL");
       }
 
-      this.logger.log(`สร้าง auth URL สำเร็จ: ${data.url}`);
+      this.logger.log(`Successfully generated auth URL: ${data.url}`);
       return data.url;
     } catch (error) {
-      this.logger.error(`ข้อผิดพลาดในการสร้าง ${provider} auth URL: ${error.message}`, error.stack);
-      throw new InternalServerErrorException('ไม่สามารถเริ่มต้น OAuth flow');
+      this.logger.error(
+        `Error generating ${provider} auth URL: ${error.message}`,
+        error.stack,
+      );
+      throw new InternalServerErrorException("Cannot initiate OAuth flow");
     }
   }
 
@@ -204,14 +211,14 @@ export class AuthService {
    * Handles the OAuth callback from providers
    */
   async handleOAuthCallback(provider: string, code: string): Promise<AuthTokens> {
-    this.logger.log(`จัดการ OAuth callback สำหรับ provider: ${provider} ด้วย code: ${code}`);
+    this.logger.log(`Handling OAuth callback for provider: ${provider} with code: ${code}`);
 
     try {
       const { data, error } = await this.supabase.auth.exchangeCodeForSession(code);
 
       if (error || !data?.session) {
-        this.logger.error(`OAuth code exchange ล้มเหลว: ${error?.message}`);
-        throw new UnauthorizedException('ไม่สามารถยืนยันตัวตนกับ provider');
+        this.logger.error(`OAuth code exchange failed: ${error?.message}`);
+        throw new UnauthorizedException("Cannot authenticate with provider");
       }
 
       this.logger.log(`OAuth session data: ${JSON.stringify(data)}`);
@@ -219,8 +226,8 @@ export class AuthService {
       const supabaseUser = data.user as SupabaseUser;
 
       if (!supabaseUser || !supabaseUser.id) {
-        this.logger.error('ได้รับข้อมูลผู้ใช้ไม่ถูกต้องจาก provider');
-        throw new UnauthorizedException('ได้รับข้อมูลผู้ใช้ไม่ถูกต้องจาก provider');
+        this.logger.error("Invalid user data received from provider");
+        throw new UnauthorizedException("Invalid user data received from provider");
       }
 
       const user = await this.findOrCreateUser(supabaseUser, provider);
@@ -233,28 +240,28 @@ export class AuthService {
 
       const accessToken = this.jwtService.sign(payload);
 
-      this.logger.log(`สร้าง access token สำหรับผู้ใช้: ${user.id}`);
+      this.logger.log(`Generated access token for user: ${user.id}`);
 
       return {
         access_token: accessToken,
         refresh_token: data.session.refresh_token,
-        token_type: 'Bearer',
-        expires_in: parseInt(this.configService.get('JWT_EXPIRES_IN', '604800')),
+        token_type: "Bearer",
+        expires_in: parseInt(this.configService.get("JWT_EXPIRES_IN", "604800")),
       };
     } catch (error) {
-      this.logger.error(`ข้อผิดพลาดในการจัดการ OAuth callback: ${error.message}`, error.stack);
+      this.logger.error(`Error handling OAuth callback: ${error.message}`, error.stack);
       if (error instanceof UnauthorizedException) {
         throw error;
       }
-      throw new InternalServerErrorException('ไม่สามารถประมวลผลการยืนยันตัวตน');
+      throw new InternalServerErrorException("Cannot process authentication");
     }
   }
 
   /**
    * Find existing user or create a new one based on OAuth user data
    */
-  private async findOrCreateUser(supabaseUser: SupabaseUser, provider: string) {
-    this.logger.log(`ค้นหาหรือสร้างผู้ใช้จาก provider: ${provider}`);
+  public async findOrCreateUser(supabaseUser: SupabaseUser, provider: string) {
+    this.logger.log(`Finding or creating user from provider: ${provider}`);
 
     try {
       let user = await this.prisma.user.findUnique({
@@ -262,21 +269,21 @@ export class AuthService {
       });
 
       if (!user) {
-        this.logger.log('ไม่พบผู้ใช้, สร้างผู้ใช้ใหม่');
+        this.logger.log("User not found, creating new user");
 
         const { user_metadata } = supabaseUser;
 
-        let firstName = '';
-        let lastName = '';
+        let firstName = "";
+        let lastName = "";
 
         if (user_metadata.full_name) {
-          const nameParts = user_metadata.full_name.split(' ');
-          firstName = nameParts[0] || '';
-          lastName = nameParts.slice(1).join(' ') || '';
+          const nameParts = user_metadata.full_name.split(" ");
+          firstName = nameParts[0] || "";
+          lastName = nameParts.slice(1).join(" ") || "";
         } else if (user_metadata.name) {
-          const nameParts = user_metadata.name.split(' ');
-          firstName = nameParts[0] || '';
-          lastName = nameParts.slice(1).join(' ') || '';
+          const nameParts = user_metadata.name.split(" ");
+          firstName = nameParts[0] || "";
+          lastName = nameParts.slice(1).join(" ") || "";
         }
 
         user = await this.prisma.user.create({
@@ -291,13 +298,13 @@ export class AuthService {
           },
         });
 
-        this.logger.log(`สร้างผู้ใช้ใหม่จาก ${provider} OAuth: ${user.id}`);
+        this.logger.log(`Created new user from ${provider} OAuth: ${user.id}`);
       }
 
       return user;
     } catch (error) {
-      this.logger.error(`ข้อผิดพลาดในการค้นหา/สร้างผู้ใช้: ${error.message}`, error.stack);
-      throw new InternalServerErrorException('ไม่สามารถประมวลผลข้อมูลผู้ใช้');
+      this.logger.error(`Error finding/creating user: ${error.message}`, error.stack);
+      throw new InternalServerErrorException("Cannot process user data");
     }
   }
 
@@ -305,7 +312,7 @@ export class AuthService {
    * Validates a JWT token
    */
   async validateToken(token: string): Promise<TokenPayload> {
-    this.logger.log(`ตรวจสอบ token: ${token}`);
+    this.logger.log(`Validating token: ${token}`);
 
     try {
       const payload = this.jwtService.verify<TokenPayload>(token);
@@ -315,15 +322,15 @@ export class AuthService {
       });
 
       if (!user || user.status !== UserStatus.ACTIVE) {
-        this.logger.error('ผู้ใช้ไม่ใช้งานหรือไม่พบ');
-        throw new UnauthorizedException('ผู้ใช้ไม่ใช้งานหรือไม่พบ');
+        this.logger.error("User not found or inactive");
+        throw new UnauthorizedException("User not found or inactive");
       }
 
-      this.logger.log(`ตรวจสอบ token สำเร็จสำหรับผู้ใช้: ${payload.sub}`);
+      this.logger.log(`Token validation successful for user: ${payload.sub}`);
       return payload;
     } catch (error) {
-      this.logger.error(`ข้อผิดพลาดในการตรวจสอบ token: ${error.message}`, error.stack);
-      throw new UnauthorizedException('token ไม่ถูกต้อง');
+      this.logger.error(`Error validating token: ${error.message}`, error.stack);
+      throw new UnauthorizedException("Invalid token");
     }
   }
 
@@ -331,46 +338,46 @@ export class AuthService {
    * Refreshes an access token using a refresh token
    */
   async refreshToken(refreshToken: string): Promise<{ access_token: string }> {
-    this.logger.log(`รีเฟรช token ด้วย refresh token`);
+    this.logger.log(`Refreshing token with refresh token`);
 
     try {
-      // ตรวจสอบว่าเป็น refresh token จาก OAuth (Supabase) หรือจากล็อกอินปกติ
+      // Check if it's a refresh token from OAuth (Supabase) or regular login
       try {
-        // ลอง verify ว่าเป็น JWT refresh token
+        // Try to verify as JWT refresh token
         const payload = this.jwtService.verify<TokenPayload>(refreshToken, {
-          secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+          secret: this.configService.get<string>("JWT_REFRESH_SECRET"),
         });
 
-        // ค้นหาผู้ใช้
+        // Find user
         const user = await this.prisma.user.findUnique({
           where: { id: payload.sub },
         });
 
         if (!user || user.status !== UserStatus.ACTIVE) {
-          this.logger.error('ไม่พบผู้ใช้หรือผู้ใช้ไม่ใช้งาน');
-          throw new UnauthorizedException('ไม่พบผู้ใช้หรือผู้ใช้ไม่ใช้งาน');
+          this.logger.error("User not found or inactive");
+          throw new UnauthorizedException("User not found or inactive");
         }
 
-        // สร้าง access token ใหม่
+        // Generate new access token
         const newPayload: TokenPayload = {
           sub: user.id,
           email: user.email,
           role: user.role.toString(),
         };
 
-        this.logger.log(`สร้าง access token ใหม่สำหรับผู้ใช้: ${user.id}`);
+        this.logger.log(`Generated new access token for user: ${user.id}`);
         return {
           access_token: this.jwtService.sign(newPayload),
         };
       } catch (jwtError) {
-        // ถ้าไม่ใช่ JWT refresh token ลองใช้ Supabase (สำหรับ OAuth)
+        // If not a JWT refresh token, try Supabase (for OAuth)
         const { data, error } = await this.supabase.auth.refreshSession({
           refresh_token: refreshToken,
         });
 
         if (error || !data?.session) {
-          this.logger.error(`ไม่สามารถรีเฟรช session: ${error?.message}`);
-          throw new UnauthorizedException('refresh token ไม่ถูกต้อง');
+          this.logger.error(`Cannot refresh session: ${error?.message}`);
+          throw new UnauthorizedException("Invalid refresh token");
         }
 
         const user = await this.prisma.user.findUnique({
@@ -378,8 +385,8 @@ export class AuthService {
         });
 
         if (!user || user.status !== UserStatus.ACTIVE) {
-          this.logger.error('ไม่พบผู้ใช้หรือผู้ใช้ไม่ใช้งาน');
-          throw new UnauthorizedException('ไม่พบผู้ใช้หรือผู้ใช้ไม่ใช้งาน');
+          this.logger.error("User not found or inactive");
+          throw new UnauthorizedException("User not found or inactive");
         }
 
         const payload: TokenPayload = {
@@ -388,31 +395,31 @@ export class AuthService {
           role: user.role.toString(),
         };
 
-        this.logger.log(`สร้าง access token ใหม่สำหรับผู้ใช้: ${user.id}`);
+        this.logger.log(`Generated new access token for user: ${user.id}`);
         return {
           access_token: this.jwtService.sign(payload),
         };
       }
     } catch (error) {
-      this.logger.error(`ข้อผิดพลาดในการรีเฟรช token: ${error.message}`, error.stack);
-      throw new UnauthorizedException('ไม่สามารถรีเฟรช token');
+      this.logger.error(`Error refreshing token: ${error.message}`, error.stack);
+      throw new UnauthorizedException("Cannot refresh token");
     }
   }
 
   async loginWithSupabaseToken(access_token: string): Promise<AuthTokens> {
-    this.logger.log(`กำลังตรวจสอบ access token จาก Supabase`);
+    this.logger.log(`Validating access token from Supabase`);
 
     try {
       const { data, error } = await this.supabase.auth.getUser(access_token);
 
       if (error || !data?.user) {
-        this.logger.error(`ไม่สามารถตรวจสอบ access token: ${error?.message}`);
-        throw new UnauthorizedException('ไม่สามารถตรวจสอบ token');
+        this.logger.error(`Cannot validate access token: ${error?.message}`);
+        throw new UnauthorizedException("Cannot validate token");
       }
 
       const supabaseUser = data.user as SupabaseUser;
 
-      const user = await this.findOrCreateUser(supabaseUser, 'supabase');
+      const user = await this.findOrCreateUser(supabaseUser, "supabase");
 
       const payload: TokenPayload = {
         sub: user.id,
@@ -422,19 +429,31 @@ export class AuthService {
 
       const jwtAccessToken = this.jwtService.sign(payload);
       const jwtRefreshToken = this.jwtService.sign(payload, {
-        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-        expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '30d'),
+        secret: this.configService.get<string>("JWT_REFRESH_SECRET"),
+        expiresIn: this.configService.get<string>("JWT_REFRESH_EXPIRES_IN", "30d"),
       });
 
       return {
         access_token: jwtAccessToken,
         refresh_token: jwtRefreshToken,
-        token_type: 'Bearer',
-        expires_in: parseInt(this.configService.get('JWT_EXPIRES_IN', '604800')),
+        token_type: "Bearer",
+        expires_in: parseInt(this.configService.get("JWT_EXPIRES_IN", "604800")),
       };
     } catch (error) {
-      this.logger.error(`ข้อผิดพลาดในการเข้าสู่ระบบด้วย Supabase token: ${error.message}`, error.stack);
-      throw new InternalServerErrorException('ไม่สามารถเข้าสู่ระบบด้วย Supabase token');
+      this.logger.error(`Error logging in with Supabase token: ${error.message}`, error.stack);
+      throw new InternalServerErrorException("Cannot login with Supabase token");
     }
+  }
+
+  public async getUserFromAccessToken(accessToken: string): Promise<SupabaseUser> {
+    const { data, error } = await this.supabase.auth.getUser(accessToken);
+    if (error || !data?.user) {
+      throw new UnauthorizedException('Cannot authenticate with provider');
+    }
+    return data.user as SupabaseUser;
+  }
+
+  public signJwt(payload: TokenPayload): string {
+    return this.jwtService.sign(payload);
   }
 }

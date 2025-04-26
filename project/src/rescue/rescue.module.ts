@@ -1,8 +1,8 @@
-import { Module } from '@nestjs/common';
-import { RescueController } from './rescue.controller';
-import { RescueService } from './rescue.service';
-import { PrismaModule } from '../prisma/prisma.module';
-import { NotificationModule } from '../notification/notification.module';
+import { Module } from "@nestjs/common";
+import { RescueController } from "./rescue.controller";
+import { RescueService } from "./rescue.service";
+import { PrismaModule } from "../prisma/prisma.module";
+import { NotificationModule } from "../notification/notification.module";
 
 @Module({
   imports: [

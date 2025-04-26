@@ -5,8 +5,8 @@ import {
   HttpException,
   HttpStatus,
   Logger,
-} from '@nestjs/common';
-import { Request, Response } from 'express';
+} from "@nestjs/common";
+import { Request, Response } from "express";
 
 @Catch(HttpException)
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -22,7 +22,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     // Log the error
     this.logger.error(
       `[${request.method}] ${request.url} - ${status}: ${
-        typeof errorResponse === 'object'
+        typeof errorResponse === "object"
           ? JSON.stringify(errorResponse)
           : errorResponse
       }`,
@@ -34,9 +34,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
       path: request.url,
       method: request.method,
-      error: typeof errorResponse === 'object' 
-        ? errorResponse 
-        : { message: errorResponse },
+      error:
+        typeof errorResponse === "object"
+          ? errorResponse
+          : { message: errorResponse },
     };
 
     response.status(status).json(formattedError);

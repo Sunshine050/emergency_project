@@ -1,11 +1,11 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { NotificationGateway } from './notification.gateway';
-import { JwtService } from '@nestjs/jwt';
-import { AuthService } from '../auth/auth.service';
-import { PrismaService } from '../prisma/prisma.service';
-import { Server, Socket } from 'socket.io';
+import { Test, TestingModule } from "@nestjs/testing";
+import { NotificationGateway } from "./notification.gateway";
+import { JwtService } from "@nestjs/jwt";
+import { AuthService } from "../auth/auth.service";
+import { PrismaService } from "../prisma/prisma.service";
+import { Server, Socket } from "socket.io";
 
-describe('NotificationGateway', () => {
+describe("NotificationGateway", () => {
   let gateway: NotificationGateway;
   let jwtService: JwtService;
   let authService: AuthService;
@@ -54,17 +54,17 @@ describe('NotificationGateway', () => {
     } as any;
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(gateway).toBeDefined();
   });
 
-  describe('handleConnection', () => {
-    it('should handle valid connection with token', async () => {
+  describe("handleConnection", () => {
+    it("should handle valid connection with token", async () => {
       const mockSocket = {
-        id: 'socket-123',
+        id: "socket-123",
         handshake: {
           auth: {
-            token: 'valid-token',
+            token: "valid-token",
           },
         },
         join: jest.fn(),
@@ -72,8 +72,8 @@ describe('NotificationGateway', () => {
       } as any;
 
       const mockUser = {
-        id: 'user-123',
-        role: 'PATIENT',
+        id: "user-123",
+        role: "PATIENT",
       };
 
       mockAuthService.validateToken.mockResolvedValue(mockUser);
@@ -84,18 +84,20 @@ describe('NotificationGateway', () => {
       expect(mockSocket.join).toHaveBeenCalledWith(`role:${mockUser.role}`);
     });
 
-    it('should disconnect socket with invalid token', async () => {
+    it("should disconnect socket with invalid token", async () => {
       const mockSocket = {
-        id: 'socket-123',
+        id: "socket-123",
         handshake: {
           auth: {
-            token: 'invalid-token',
+            token: "invalid-token",
           },
         },
         disconnect: jest.fn(),
       } as any;
 
-      mockAuthService.validateToken.mockRejectedValue(new Error('Invalid token'));
+      mockAuthService.validateToken.mockRejectedValue(
+        new Error("Invalid token"),
+      );
 
       await gateway.handleConnection(mockSocket);
 
@@ -103,11 +105,11 @@ describe('NotificationGateway', () => {
     });
   });
 
-  describe('sendToUser', () => {
-    it('should emit event to specific user', () => {
-      const userId = 'user-123';
-      const event = 'notification';
-      const data = { message: 'test' };
+  describe("sendToUser", () => {
+    it("should emit event to specific user", () => {
+      const userId = "user-123";
+      const event = "notification";
+      const data = { message: "test" };
 
       gateway.sendToUser(userId, event, data);
 
@@ -116,19 +118,19 @@ describe('NotificationGateway', () => {
     });
   });
 
-  describe('broadcastEmergency', () => {
-    it('should broadcast emergency to all relevant roles', () => {
+  describe("broadcastEmergency", () => {
+    it("should broadcast emergency to all relevant roles", () => {
       const data = {
-        id: 'emergency-123',
-        type: 'MEDICAL',
+        id: "emergency-123",
+        type: "MEDICAL",
       };
 
       gateway.broadcastEmergency(data);
 
-      expect(gateway.server.to).toHaveBeenCalledWith('role:EMERGENCY_CENTER');
-      expect(gateway.server.to).toHaveBeenCalledWith('role:HOSPITAL');
-      expect(gateway.server.to).toHaveBeenCalledWith('role:RESCUE_TEAM');
-      expect(gateway.server.emit).toHaveBeenCalledWith('emergency', data);
+      expect(gateway.server.to).toHaveBeenCalledWith("role:EMERGENCY_CENTER");
+      expect(gateway.server.to).toHaveBeenCalledWith("role:HOSPITAL");
+      expect(gateway.server.to).toHaveBeenCalledWith("role:RESCUE_TEAM");
+      expect(gateway.server.emit).toHaveBeenCalledWith("emergency", data);
     });
   });
 });

@@ -1,11 +1,11 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { RescueService } from './rescue.service';
-import { PrismaService } from '../prisma/prisma.service';
-import { NotificationService } from '../notification/notification.service';
-import { NotFoundException } from '@nestjs/common';
-import { RescueTeamStatus } from './dto/rescue.dto';
+import { Test, TestingModule } from "@nestjs/testing";
+import { RescueService } from "./rescue.service";
+import { PrismaService } from "../prisma/prisma.service";
+import { NotificationService } from "../notification/notification.service";
+import { NotFoundException } from "@nestjs/common";
+import { RescueTeamStatus } from "./dto/rescue.dto";
 
-describe('RescueService', () => {
+describe("RescueService", () => {
   let service: RescueService;
   let prismaService: PrismaService;
   let notificationService: NotificationService;
@@ -41,28 +41,28 @@ describe('RescueService', () => {
     notificationService = module.get<NotificationService>(NotificationService);
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(service).toBeDefined();
   });
 
-  describe('updateStatus', () => {
-    it('should update rescue team status successfully', async () => {
+  describe("updateStatus", () => {
+    it("should update rescue team status successfully", async () => {
       const updateDto = {
         status: RescueTeamStatus.AVAILABLE,
-        notes: 'Team is ready',
-        currentEmergencyId: 'emergency-123',
+        notes: "Team is ready",
+        currentEmergencyId: "emergency-123",
       };
 
       const mockTeam = {
-        id: 'team-123',
-        name: 'Test Team',
+        id: "team-123",
+        name: "Test Team",
         status: RescueTeamStatus.AVAILABLE,
-        notes: 'Team is ready',
-        currentEmergencyId: 'emergency-123',
-        type: 'RESCUE_TEAM',
+        notes: "Team is ready",
+        currentEmergencyId: "emergency-123",
+        type: "RESCUE_TEAM",
         medicalInfo: {
-          currentEmergencyId: 'emergency-123',
-          notes: 'Team is ready',
+          currentEmergencyId: "emergency-123",
+          notes: "Team is ready",
         },
       };
 
@@ -72,11 +72,11 @@ describe('RescueService', () => {
       });
       mockPrismaService.organization.update.mockResolvedValue(mockTeam);
 
-      const result = await service.updateStatus('team-123', updateDto);
+      const result = await service.updateStatus("team-123", updateDto);
 
       expect(result).toEqual(mockTeam);
       expect(mockPrismaService.organization.update).toHaveBeenCalledWith({
-        where: { id: 'team-123' },
+        where: { id: "team-123" },
         data: {
           status: updateDto.status,
           medicalInfo: {
@@ -87,18 +87,18 @@ describe('RescueService', () => {
       });
     });
 
-    it('should throw NotFoundException for non-existent team', async () => {
+    it("should throw NotFoundException for non-existent team", async () => {
       const updateDto = {
         status: RescueTeamStatus.AVAILABLE,
-        notes: 'Team is ready',
-        currentEmergencyId: 'emergency-123',
+        notes: "Team is ready",
+        currentEmergencyId: "emergency-123",
       };
 
       mockPrismaService.organization.findFirst.mockResolvedValue(null);
 
-      await expect(service.updateStatus('non-existent', updateDto)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.updateStatus("non-existent", updateDto),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

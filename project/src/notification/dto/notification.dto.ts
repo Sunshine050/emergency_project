@@ -1,4 +1,4 @@
-import { IsString, IsUUID, IsOptional, IsObject } from 'class-validator';
+import { IsString, IsUUID, IsOptional, IsObject } from "class-validator";
 
 export class CreateNotificationDto {
   @IsString()

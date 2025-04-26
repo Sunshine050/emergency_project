@@ -1,10 +1,10 @@
-import { IsString, IsOptional, IsDateString, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsDateString, IsEnum } from "class-validator";
 
 enum ReportType {
-  DAILY = 'DAILY',
-  WEEKLY = 'WEEKLY',
-  MONTHLY = 'MONTHLY',
-  CUSTOM = 'CUSTOM',
+  DAILY = "DAILY",
+  WEEKLY = "WEEKLY",
+  MONTHLY = "MONTHLY",
+  CUSTOM = "CUSTOM",
 }
 
 export class ReportQueryDto {

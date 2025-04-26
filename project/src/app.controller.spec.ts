@@ -1,8 +1,8 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { Test, TestingModule } from "@nestjs/testing";
+import { AppController } from "./app.controller";
+import { AppService } from "./app.service";
 
-describe('AppController', () => {
+describe("AppController", () => {
   let appController: AppController;
   let appService: AppService;
 
@@ -20,9 +20,9 @@ describe('AppController', () => {
     appService = module.get<AppService>(AppService);
   });
 
-  describe('getHello', () => {
-    it('should return status and timestamp', () => {
-      const result = { status: 'ok', timestamp: '2025-04-25T12:00:00.000Z' };
+  describe("getHello", () => {
+    it("should return status and timestamp", () => {
+      const result = { status: "ok", timestamp: "2025-04-25T12:00:00.000Z" };
       mockAppService.getHello.mockReturnValue(result);
 
       expect(appController.getHello()).toEqual(result);

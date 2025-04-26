@@ -1,10 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { RolesGuard } from './roles.guard';
-import { Reflector } from '@nestjs/core';
-import { UserRole } from '@prisma/client';
-import { ExecutionContext } from '@nestjs/common';
+import { Test, TestingModule } from "@nestjs/testing";
+import { RolesGuard } from "./roles.guard";
+import { Reflector } from "@nestjs/core";
+import { UserRole } from "@prisma/client";
+import { ExecutionContext } from "@nestjs/common";
 
-describe('RolesGuard', () => {
+describe("RolesGuard", () => {
   let guard: RolesGuard;
   let reflector: Reflector;
 
@@ -25,13 +25,13 @@ describe('RolesGuard', () => {
     reflector = module.get<Reflector>(Reflector);
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(guard).toBeDefined();
   });
 
-  describe('canActivate', () => {
-    it('should allow access when no roles are required', () => {
-      jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(null);
+  describe("canActivate", () => {
+    it("should allow access when no roles are required", () => {
+      jest.spyOn(reflector, "getAllAndOverride").mockReturnValue(null);
 
       const context = {
         getHandler: jest.fn().mockReturnValue(() => {}),
@@ -48,8 +48,10 @@ describe('RolesGuard', () => {
       expect(guard.canActivate(context)).toBe(true);
     });
 
-    it('should allow access when user has required role', () => {
-      jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue([UserRole.ADMIN]);
+    it("should allow access when user has required role", () => {
+      jest
+        .spyOn(reflector, "getAllAndOverride")
+        .mockReturnValue([UserRole.ADMIN]);
 
       const context = {
         getHandler: jest.fn().mockReturnValue(() => {}),
@@ -66,8 +68,10 @@ describe('RolesGuard', () => {
       expect(guard.canActivate(context)).toBe(true);
     });
 
-    it('should deny access when user lacks required role', () => {
-      jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue([UserRole.ADMIN]);
+    it("should deny access when user lacks required role", () => {
+      jest
+        .spyOn(reflector, "getAllAndOverride")
+        .mockReturnValue([UserRole.ADMIN]);
 
       const context = {
         getHandler: jest.fn().mockReturnValue(() => {}),

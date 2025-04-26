@@ -1,11 +1,19 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { NotificationService } from '../notification/notification.service';
-import { CreateRescueTeamDto, UpdateRescueTeamDto, UpdateRescueTeamStatusDto } from './dto/rescue.dto';
-import { EmergencyStatus } from '../sos/dto/sos.dto';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { NotificationService } from "../notification/notification.service";
+import {
+  CreateRescueTeamDto,
+  UpdateRescueTeamDto,
+  UpdateRescueTeamStatusDto,
+} from "./dto/rescue.dto";
+import { EmergencyStatus } from "../sos/dto/sos.dto";
 
 // กำหนด type สำหรับ QueryMode
-type QueryMode = 'default' | 'insensitive';
+type QueryMode = "default" | "insensitive";
 
 @Injectable()
 export class RescueService {
@@ -18,18 +26,18 @@ export class RescueService {
     return this.prisma.organization.create({
       data: {
         ...createRescueTeamDto,
-        type: 'RESCUE_TEAM',
+        type: "RESCUE_TEAM",
       },
     });
   }
 
   async findAll(search?: string) {
     const where = {
-      type: 'RESCUE_TEAM',
+      type: "RESCUE_TEAM",
       ...(search && {
         OR: [
-          { name: { contains: search, mode: 'insensitive' as QueryMode } },
-          { city: { contains: search, mode: 'insensitive' as QueryMode } },
+          { name: { contains: search, mode: "insensitive" as QueryMode } },
+          { city: { contains: search, mode: "insensitive" as QueryMode } },
         ],
       }),
     };
@@ -53,7 +61,7 @@ export class RescueService {
     const rescueTeam = await this.prisma.organization.findFirst({
       where: {
         id,
-        type: 'RESCUE_TEAM',
+        type: "RESCUE_TEAM",
       },
       include: {
         users: {
@@ -73,7 +81,7 @@ export class RescueService {
     });
 
     if (!rescueTeam) {
-      throw new NotFoundException('Rescue team not found');
+      throw new NotFoundException("Rescue team not found");
     }
 
     return {
@@ -109,7 +117,11 @@ export class RescueService {
     });
   }
 
-  async findAvailableTeams(latitude: number, longitude: number, radius: number = 10) {
+  async findAvailableTeams(
+    latitude: number,
+    longitude: number,
+    radius: number = 10,
+  ) {
     // Using Haversine formula to calculate distance
     const teams = await this.prisma.$queryRaw`
       SELECT 

@@ -10,17 +10,17 @@ import {
   UnauthorizedException,
   Logger,
   UseGuards,
-} from '@nestjs/common';
-import { Response } from 'express';
-import { AuthService } from './auth.service';
-import { OAuthLoginDto, RegisterDto, LoginDto } from './dto/auth.dto';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { ConfigService } from '@nestjs/config';
-import { Public } from './decorators/public.decorator';
-import { UserRole } from '@prisma/client';
-import { SupabaseService } from '../supabase/supabase.service';
+} from "@nestjs/common";
+import { Response } from "express";
+import { AuthService } from "./auth.service";
+import { OAuthLoginDto, RegisterDto, LoginDto } from "./dto/auth.dto";
+import { JwtAuthGuard } from "./guards/jwt-auth.guard";
+import { ConfigService } from "@nestjs/config";
+import { Public } from "./decorators/public.decorator";
+import { UserRole } from "@prisma/client";
+import { TokenPayload } from "../common/interfaces/auth.interface";
 
-@Controller('auth')
+@Controller("auth")
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
 
@@ -30,15 +30,15 @@ export class AuthController {
   ) {}
 
   /**
-   * ลงทะเบียนผู้ใช้ใหม่ (เจ้าหน้าที่) ด้วยอีเมลและรหัสผ่าน
+   * Register a new user (staff) with email and password
    */
   @Public()
-  @Post('register')
+  @Post("register")
   async register(@Body() registerDto: RegisterDto, @Res() res: Response) {
     try {
       const user = await this.authService.register(registerDto);
       return res.status(HttpStatus.CREATED).json({
-        message: 'ลงทะเบียนสำเร็จ',
+        message: "Registration successful",
         user: {
           id: user.id,
           email: user.email,
@@ -51,33 +51,33 @@ export class AuthController {
         },
       });
     } catch (error) {
-      this.logger.error(`ข้อผิดพลาดในการลงทะเบียน: ${error.message}`, error.stack);
+      this.logger.error(`Error during registration: ${error.message}`, error.stack);
       return res.status(HttpStatus.BAD_REQUEST).json({
-        message: 'ลงทะเบียนล้มเหลว',
+        message: "Registration failed",
         error: error.message,
       });
     }
   }
 
   /**
-   * ล็อกอินด้วยอีเมลและรหัสผ่าน
+   * Login with email and password
    */
   @Public()
-  @Post('login')
+  @Post("login")
   async login(@Body() loginDto: LoginDto, @Res() res: Response) {
     try {
       const authResult = await this.authService.login(loginDto);
       return res.status(HttpStatus.OK).json({
-        message: 'ล็อกอินสำเร็จ',
+        message: "Login successful",
         access_token: authResult.access_token,
         refresh_token: authResult.refresh_token,
         token_type: authResult.token_type,
         expires_in: authResult.expires_in,
       });
     } catch (error) {
-      this.logger.error(`ข้อผิดพลาดในการล็อกอิน: ${error.message}`, error.stack);
+      this.logger.error(`Error during login: ${error.message}`, error.stack);
       return res.status(HttpStatus.UNAUTHORIZED).json({
-        message: 'ล็อกอินล้มเหลว',
+        message: "Login failed",
         error: error.message,
       });
     }
@@ -87,14 +87,14 @@ export class AuthController {
    * Initiates OAuth login flow by redirecting to the appropriate provider
    */
   @Public()
-  @Post('login/oauth')
+  @Post("login/oauth")
   async oauthLogin(@Body() oauthLoginDto: OAuthLoginDto, @Res() res: Response) {
     try {
       const authUrl = await this.authService.generateAuthUrl(oauthLoginDto.provider);
       return res.status(HttpStatus.OK).json({ url: authUrl });
     } catch (error) {
-      this.logger.error(`ข้อผิดพลาด OAuth login: ${error.message}`, error.stack);
-      throw new UnauthorizedException('ไม่สามารถเริ่มต้น OAuth login');
+      this.logger.error(`Error in OAuth login: ${error.message}`, error.stack);
+      throw new UnauthorizedException("Cannot initiate OAuth login");
     }
   }
 
@@ -102,34 +102,61 @@ export class AuthController {
    * Handles OAuth callback from providers
    */
   @Public()
-  @Get('callback')
+  @Get("callback")
   async oauthCallback(
-    @Query('provider') provider: string,
-    @Query('code') code: string,
+    @Query("provider") provider: string,
+    @Query("code") code: string,
+    @Query("access_token") accessToken: string,
     @Res() res: Response,
   ) {
-    this.logger.debug(`Received callback -> provider: ${provider}, code: ${code}`);
+    this.logger.debug(`Received callback -> provider: ${provider}, code: ${code}, access_token: ${accessToken}`);
 
-    if (!provider || !code) {
-      this.logger.warn('Missing provider or code in callback');
+    if (!provider) {
+      this.logger.warn("Missing provider in callback");
       return res.status(HttpStatus.BAD_REQUEST).json({
-        message: 'Missing provider or code in callback',
+        message: "Missing provider in callback",
       });
     }
 
     try {
-      const authResult = await this.authService.handleOAuthCallback(provider, code);
+      let authResult;
+      if (code) {
+        // Authorization Code Flow
+        authResult = await this.authService.handleOAuthCallback(provider, code);
+      } else if (accessToken) {
+        // Implicit Flow: Use access_token directly
+        const supabaseUser = await this.authService.getUserFromAccessToken(accessToken);
+        const user = await this.authService.findOrCreateUser(supabaseUser, provider);
+        const payload: TokenPayload = {
+          sub: user.id,
+          email: user.email,
+          role: user.role.toString(),
+        };
+        const jwtAccessToken = this.authService.signJwt(payload);
+        authResult = {
+          access_token: jwtAccessToken,
+          refresh_token: "",
+          token_type: "Bearer",
+          expires_in: parseInt(this.configService.get("JWT_EXPIRES_IN", "604800")),
+        };
+      } else {
+        this.logger.warn("Missing code or access_token in callback");
+        return res.status(HttpStatus.BAD_REQUEST).json({
+          message: "Missing code or access_token in callback",
+        });
+      }
+
       return res.status(HttpStatus.OK).json({
-        message: 'OAuth callback สำเร็จ',
+        message: "OAuth callback successful",
         access_token: authResult.access_token,
         refresh_token: authResult.refresh_token,
         token_type: authResult.token_type,
         expires_in: authResult.expires_in,
       });
     } catch (error) {
-      this.logger.error(`ข้อผิดพลาด OAuth callback: ${error.message}`, error.stack);
+      this.logger.error(`Error in OAuth callback: ${error.message}`, error.stack);
       return res.status(HttpStatus.UNAUTHORIZED).json({
-        message: 'ไม่สามารถยืนยันตัวตนกับ provider',
+        message: "Cannot authenticate with provider",
         error: error.message,
       });
     }
@@ -139,7 +166,7 @@ export class AuthController {
    * Test endpoint to verify user authentication
    */
   @UseGuards(JwtAuthGuard)
-  @Get('me')
+  @Get("me")
   getProfile(@Req() req) {
     return req.user;
   }
@@ -148,14 +175,13 @@ export class AuthController {
    * Refreshes the JWT token using a refresh token
    */
   @Public()
-  @Post('refresh')
-  async refreshToken(@Body('refreshToken') refreshToken: string) {
+  @Post("refresh")
+  async refreshToken(@Body("refreshToken") refreshToken: string) {
     return this.authService.refreshToken(refreshToken);
   }
 
-  @Post('supabase-login')
-async supabaseLogin(@Body() body: { access_token: string }) {
-  return this.authService.loginWithSupabaseToken(body.access_token);
-}
-
+  @Post("supabase-login")
+  async supabaseLogin(@Body() body: { access_token: string }) {
+    return this.authService.loginWithSupabaseToken(body.access_token);
+  }
 }

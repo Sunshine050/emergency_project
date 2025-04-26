@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { NotificationGateway } from './notification.gateway';
-import { CreateNotificationDto } from './dto/notification.dto';
+import { Injectable } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { NotificationGateway } from "./notification.gateway";
+import { CreateNotificationDto } from "./dto/notification.dto";
 
 @Injectable()
 export class NotificationService {
@@ -24,7 +24,7 @@ export class NotificationService {
     // Send real-time notification via WebSocket
     this.notificationGateway.sendToUser(
       createNotificationDto.userId,
-      'notification',
+      "notification",
       notification,
     );
 
@@ -61,7 +61,7 @@ export class NotificationService {
         userId,
       },
       orderBy: {
-        createdAt: 'desc',
+        createdAt: "desc",
       },
     });
   }

@@ -1,7 +1,7 @@
-import { } from './rescue.controller';
+import {} from "./rescue.controller";
 
-describe('rescue.controller.ts', () => {
-  it('should be defined', () => {
+describe("rescue.controller.ts", () => {
+  it("should be defined", () => {
     expect(true).toBeDefined();
   });
 });

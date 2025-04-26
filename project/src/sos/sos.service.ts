@@ -1,9 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { NotificationService } from '../notification/notification.service';
-import { NotificationGateway } from '../notification/notification.gateway';
-import { CreateEmergencyRequestDto, UpdateEmergencyStatusDto, EmergencyStatus } from './dto/sos.dto';
-import { UserRole } from '@prisma/client';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { NotificationService } from "../notification/notification.service";
+import { NotificationGateway } from "../notification/notification.gateway";
+import {
+  CreateEmergencyRequestDto,
+  UpdateEmergencyStatusDto,
+  EmergencyStatus,
+} from "./dto/sos.dto";
+import { UserRole } from "@prisma/client";
 
 @Injectable()
 export class SosService {
@@ -13,7 +17,10 @@ export class SosService {
     private notificationGateway: NotificationGateway,
   ) {}
 
-  async createEmergencyRequest(createSosDto: CreateEmergencyRequestDto, userId: string) {
+  async createEmergencyRequest(
+    createSosDto: CreateEmergencyRequestDto,
+    userId: string,
+  ) {
     // Create emergency request
     const emergencyRequest = await this.prisma.emergencyRequest.create({
       data: {
@@ -38,17 +45,21 @@ export class SosService {
     const responders = await this.prisma.user.findMany({
       where: {
         role: {
-          in: [UserRole.EMERGENCY_CENTER, UserRole.HOSPITAL, UserRole.RESCUE_TEAM],
+          in: [
+            UserRole.EMERGENCY_CENTER,
+            UserRole.HOSPITAL,
+            UserRole.RESCUE_TEAM,
+          ],
         },
-        status: 'ACTIVE',
+        status: "ACTIVE",
       },
     });
 
     // Send notifications to all responders
     for (const responder of responders) {
       await this.notificationService.createNotification({
-        type: 'EMERGENCY',
-        title: 'New Emergency Request',
+        type: "EMERGENCY",
+        title: "New Emergency Request",
         body: `Emergency ${createSosDto.type} - ${createSosDto.grade} grade`,
         userId: responder.id,
         metadata: {
@@ -94,7 +105,7 @@ export class SosService {
     });
 
     if (!emergency) {
-      throw new NotFoundException('Emergency request not found');
+      throw new NotFoundException("Emergency request not found");
     }
 
     // Update emergency status
@@ -107,8 +118,8 @@ export class SosService {
 
     // Notify patient
     await this.notificationService.createNotification({
-      type: 'STATUS_UPDATE',
-      title: 'Emergency Status Update',
+      type: "STATUS_UPDATE",
+      title: "Emergency Status Update",
       body: `Your emergency request status has been updated to ${updateStatusDto.status}`,
       userId: emergency.patientId,
       metadata: {
@@ -122,8 +133,8 @@ export class SosService {
     for (const response of emergency.responses) {
       for (const user of response.organization.users) {
         await this.notificationService.createNotification({
-          type: 'STATUS_UPDATE',
-          title: 'Emergency Status Update',
+          type: "STATUS_UPDATE",
+          title: "Emergency Status Update",
           body: `Emergency request ${emergency.id} status updated to ${updateStatusDto.status}`,
           userId: user.id,
           metadata: {

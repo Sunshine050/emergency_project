@@ -1,9 +1,16 @@
-import { IsString, IsOptional, IsNumber, IsEmail, IsUUID, IsEnum } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsNumber,
+  IsEmail,
+  IsUUID,
+  IsEnum,
+} from "class-validator";
 
 export enum HospitalStatus {
-  ACTIVE = 'ACTIVE',
-  INACTIVE = 'INACTIVE',
-  MAINTENANCE = 'MAINTENANCE',
+  ACTIVE = "ACTIVE",
+  INACTIVE = "INACTIVE",
+  MAINTENANCE = "MAINTENANCE",
 }
 
 export class CreateHospitalDto {

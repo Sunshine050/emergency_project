@@ -1,10 +1,18 @@
-import { IsString, IsOptional, IsNumber, IsEmail, IsEnum, IsArray, IsUUID } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsNumber,
+  IsEmail,
+  IsEnum,
+  IsArray,
+  IsUUID,
+} from "class-validator";
 
 export enum RescueTeamStatus {
-  AVAILABLE = 'AVAILABLE',
-  BUSY = 'BUSY',
-  OFF_DUTY = 'OFF_DUTY',
-  MAINTENANCE = 'MAINTENANCE',
+  AVAILABLE = "AVAILABLE",
+  BUSY = "BUSY",
+  OFF_DUTY = "OFF_DUTY",
+  MAINTENANCE = "MAINTENANCE",
 }
 
 export class CreateRescueTeamDto {

@@ -1,5 +1,12 @@
-import { IsString, IsNotEmpty, IsEmail, IsIn, IsOptional, IsEnum } from 'class-validator';
-import { UserRole } from '@prisma/client';
+import {
+  IsString,
+  IsNotEmpty,
+  IsEmail,
+  IsIn,
+  IsOptional,
+  IsEnum,
+} from "class-validator";
+import { UserRole } from "@prisma/client";
 
 /**
  * DTO for initiating an OAuth login flow
@@ -7,7 +14,7 @@ import { UserRole } from '@prisma/client';
 export class OAuthLoginDto {
   @IsNotEmpty()
   @IsString()
-  @IsIn(['google', 'facebook', 'apple'])
+  @IsIn(["google", "facebook", "apple"])
   provider: string;
 
   @IsOptional()
@@ -50,7 +57,12 @@ export class RegisterDto {
 
   @IsOptional()
   @IsEnum(UserRole)
-  @IsIn([UserRole.EMERGENCY_CENTER, UserRole.HOSPITAL, UserRole.RESCUE_TEAM, UserRole.ADMIN])
+  @IsIn([
+    UserRole.EMERGENCY_CENTER,
+    UserRole.HOSPITAL,
+    UserRole.RESCUE_TEAM,
+    UserRole.ADMIN,
+  ])
   role?: UserRole; // จำกัดบทบาทสำหรับเจ้าหน้าที่
 }
 

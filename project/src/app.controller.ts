@@ -1,6 +1,6 @@
-import { Controller, Get } from '@nestjs/common';
-import { AppService } from './app.service';
-import { Public } from './auth/decorators/public.decorator';
+import { Controller, Get } from "@nestjs/common";
+import { AppService } from "./app.service";
+import { Public } from "./auth/decorators/public.decorator";
 
 @Controller()
 export class AppController {
@@ -12,7 +12,7 @@ export class AppController {
     return this.appService.getHello();
   }
 
-  @Get('/') // สำหรับ / โดยตรง (ข้าม global prefix)
+  @Get("/") // สำหรับ / โดยตรง (ข้าม global prefix)
   @Public()
   getHello(): { status: string; timestamp: string } {
     return this.appService.getHello();

@@ -3,9 +3,9 @@ import {
   NestInterceptor,
   ExecutionContext,
   CallHandler,
-} from '@nestjs/common';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+} from "@nestjs/common";
+import { Observable } from "rxjs";
+import { map } from "rxjs/operators";
 
 export interface Response<T> {
   data: T;
@@ -23,7 +23,7 @@ export class TransformInterceptor<T>
   ): Observable<Response<T>> {
     const httpContext = context.switchToHttp();
     const response = httpContext.getResponse();
-    
+
     return next.handle().pipe(
       map((data) => ({
         data,

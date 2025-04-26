@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { EmergencyStatus } from '../sos/dto/sos.dto';
+import { Injectable } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { EmergencyStatus } from "../sos/dto/sos.dto";
 
 @Injectable()
 export class DashboardService {
@@ -20,7 +20,11 @@ export class DashboardService {
       this.prisma.emergencyRequest.count({
         where: {
           status: {
-            in: [EmergencyStatus.PENDING, EmergencyStatus.ASSIGNED, EmergencyStatus.IN_PROGRESS],
+            in: [
+              EmergencyStatus.PENDING,
+              EmergencyStatus.ASSIGNED,
+              EmergencyStatus.IN_PROGRESS,
+            ],
           },
         },
       }),
@@ -33,15 +37,15 @@ export class DashboardService {
       // Active rescue teams
       this.prisma.organization.count({
         where: {
-          type: 'RESCUE_TEAM',
-          status: 'ACTIVE',
+          type: "RESCUE_TEAM",
+          status: "ACTIVE",
         },
       }),
       // Active hospitals
       this.prisma.organization.count({
         where: {
-          type: 'HOSPITAL',
-          status: 'ACTIVE',
+          type: "HOSPITAL",
+          status: "ACTIVE",
         },
       }),
     ]);
@@ -59,7 +63,11 @@ export class DashboardService {
     return this.prisma.emergencyRequest.findMany({
       where: {
         status: {
-          in: [EmergencyStatus.PENDING, EmergencyStatus.ASSIGNED, EmergencyStatus.IN_PROGRESS],
+          in: [
+            EmergencyStatus.PENDING,
+            EmergencyStatus.ASSIGNED,
+            EmergencyStatus.IN_PROGRESS,
+          ],
         },
       },
       include: {
@@ -78,7 +86,7 @@ export class DashboardService {
         },
       },
       orderBy: {
-        createdAt: 'desc',
+        createdAt: "desc",
       },
     });
   }
@@ -86,8 +94,8 @@ export class DashboardService {
   async getTeamLocations() {
     return this.prisma.organization.findMany({
       where: {
-        type: 'RESCUE_TEAM',
-        status: 'ACTIVE',
+        type: "RESCUE_TEAM",
+        status: "ACTIVE",
       },
       select: {
         id: true,
@@ -103,8 +111,8 @@ export class DashboardService {
   async getHospitalCapacities() {
     return this.prisma.organization.findMany({
       where: {
-        type: 'HOSPITAL',
-        status: 'ACTIVE',
+        type: "HOSPITAL",
+        status: "ACTIVE",
       },
       select: {
         id: true,
