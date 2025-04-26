@@ -38,7 +38,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         status: true,
       },
     });
-
+    console.log('User from DB:', user);
+    if (!user || user.status !== "ACTIVE") {
+      throw new UnauthorizedException("User not found or inactive");
+    }
     // Check if user exists and is active
     if (!user || user.status !== "ACTIVE") {
       throw new UnauthorizedException("User not found or inactive");

@@ -7,27 +7,37 @@ import { ROLES_KEY } from "../decorators/roles.decorator";
 export class RolesGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
-  /**
-   * Determines if the user has the required role to access a route
-   * @param context The execution context
-   * @returns Whether the user has the required role
-   */
   canActivate(context: ExecutionContext): boolean {
+    // Log the method being called
+    const methodName = context.getHandler().name;
+    console.log('Method being called:', methodName);
+
     // Get required roles from route metadata
     const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(
       ROLES_KEY,
       [context.getHandler(), context.getClass()],
     );
+    console.log('Required Roles:', requiredRoles);
 
     // If no roles are required, allow access
     if (!requiredRoles || requiredRoles.length === 0) {
+      console.log('No required roles, allowing access');
       return true;
     }
 
     // Get the user from the request object (set by JwtAuthGuard)
     const { user } = context.switchToHttp().getRequest();
+    console.log('User:', user);
+    console.log('User Role:', user.role);
+    console.log('Type of User Role:', typeof user.role);
+    console.log('Type of Required Roles:', requiredRoles.map(role => typeof role));
 
-    // Check if user has one of the required roles
-    return requiredRoles.some((role) => user.role === role);
+    // Compare roles in a case-insensitive manner
+    const match = requiredRoles.some(
+      (role) => String(user.role).toUpperCase() === String(role).toUpperCase()
+    );
+    console.log('Match:', match);
+
+    return match;
   }
 }
