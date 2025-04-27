@@ -2,12 +2,14 @@ import { Module } from "@nestjs/common";
 import { HospitalService } from "./hospital.service";
 import { PrismaModule } from "../prisma/prisma.module";
 import { NotificationModule } from "../notification/notification.module";
+import { HospitalController } from "./hospital.controller";
 
 @Module({
   imports: [
     PrismaModule,
-    NotificationModule, // ต้องมีเพื่อให้ HospitalService ใช้ NotificationService ได้
+    NotificationModule,
   ],
+  controllers: [HospitalController], // ย้ายมาที่นี่
   providers: [HospitalService],
   exports: [HospitalService],
 })

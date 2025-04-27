@@ -16,38 +16,45 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       ignoreExpiration: false,
       secretOrKey: configService.get<string>("JWT_SECRET"),
     });
+    // Log JWT_SECRET เพื่อตรวจสอบ
+    console.log('JwtStrategy - JWT_SECRET:', configService.get<string>("JWT_SECRET"));
   }
 
-  /**
-   * Validate the JWT payload and return the user
-   * @param payload The decoded JWT payload
-   * @returns The user object if validation is successful
-   */
   async validate(payload: TokenPayload) {
+    console.log('JwtStrategy - Payload:', payload); // Log payload เพื่อดูข้อมูลโทเคน
+
     const { sub: userId } = payload;
+    console.log('JwtStrategy - User ID:', userId); // Log userId ที่ดึงจาก payload
 
-    // Find the user in the database
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        status: true,
-      },
-    });
-    console.log('User from DB:', user);
-    if (!user || user.status !== "ACTIVE") {
-      throw new UnauthorizedException("User not found or inactive");
-    }
-    // Check if user exists and is active
-    if (!user || user.status !== "ACTIVE") {
-      throw new UnauthorizedException("User not found or inactive");
-    }
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          status: true,
+        },
+      });
+      console.log('JwtStrategy - User from DB:', user); // Log ผู้ใช้ที่ query ได้
 
-    // Return user data to be attached to request object
-    return user;
+      if (!user) {
+        console.error('JwtStrategy - Error: User not found for ID:', userId);
+        throw new UnauthorizedException("User not found");
+      }
+
+      if (user.status !== "ACTIVE") {
+        console.error('JwtStrategy - Error: User is not active:', user);
+        throw new UnauthorizedException("User is inactive");
+      }
+
+      console.log('JwtStrategy - Validation successful for user:', user);
+      return user;
+    } catch (error) {
+      console.error('JwtStrategy - Error during validation:', error.message);
+      throw new UnauthorizedException("Validation failed: " + error.message);
+    }
   }
 }
