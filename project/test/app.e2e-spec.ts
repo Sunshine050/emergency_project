@@ -4,6 +4,7 @@ import * as request from "supertest";
 import { AppModule } from "../src/app.module";
 import { PrismaService } from "../src/prisma/prisma.service";
 import { EmergencyGrade, EmergencyType } from "../src/sos/dto/sos.dto";
+import { describe } from "node:test";
 
 describe("Emergency Response System (e2e)", () => {
   let app: INestApplication;

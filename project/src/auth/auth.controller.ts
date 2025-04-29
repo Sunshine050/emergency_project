@@ -13,13 +13,22 @@ import {
 } from "@nestjs/common";
 import { Response } from "express";
 import { AuthService } from "./auth.service";
-import { OAuthLoginDto, RegisterDto, LoginDto } from "./dto/auth.dto";
+import { OAuthLoginDto, RegisterDto, LoginDto, RefreshTokenDto } from "./dto/auth.dto"; // เพิ่ม RefreshTokenDto
 import { JwtAuthGuard } from "./guards/jwt-auth.guard";
 import { ConfigService } from "@nestjs/config";
 import { Public } from "./decorators/public.decorator";
 import { UserRole } from "@prisma/client";
 import { TokenPayload } from "../common/interfaces/auth.interface";
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiBody,
+  ApiQuery,
+} from "@nestjs/swagger";
 
+@ApiTags("Auth")
 @Controller("auth")
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
@@ -34,6 +43,10 @@ export class AuthController {
    */
   @Public()
   @Post("register")
+  @ApiOperation({ summary: "Register a new user (staff)" })
+  @ApiBody({ type: RegisterDto })
+  @ApiResponse({ status: 201, description: "Registration successful" })
+  @ApiResponse({ status: 400, description: "Registration failed" })
   async register(@Body() registerDto: RegisterDto, @Res() res: Response) {
     try {
       const user = await this.authService.register(registerDto);
@@ -64,6 +77,10 @@ export class AuthController {
    */
   @Public()
   @Post("login")
+  @ApiOperation({ summary: "Login with email and password" })
+  @ApiBody({ type: LoginDto })
+  @ApiResponse({ status: 200, description: "Login successful" })
+  @ApiResponse({ status: 401, description: "Login failed" })
   async login(@Body() loginDto: LoginDto, @Res() res: Response) {
     try {
       const authResult = await this.authService.login(loginDto);
@@ -88,6 +105,10 @@ export class AuthController {
    */
   @Public()
   @Post("login/oauth")
+  @ApiOperation({ summary: "Initiate OAuth login flow" })
+  @ApiBody({ type: OAuthLoginDto })
+  @ApiResponse({ status: 200, description: "OAuth URL generated" })
+  @ApiResponse({ status: 401, description: "Cannot initiate OAuth login" })
   async oauthLogin(@Body() oauthLoginDto: OAuthLoginDto, @Res() res: Response) {
     try {
       const authUrl = await this.authService.generateAuthUrl(oauthLoginDto.provider);
@@ -103,6 +124,13 @@ export class AuthController {
    */
   @Public()
   @Get("callback")
+  @ApiOperation({ summary: "Handle OAuth callback" })
+  @ApiQuery({ name: "provider", required: true, description: "OAuth provider (google, facebook, apple)" })
+  @ApiQuery({ name: "code", required: false, description: "Authorization code" })
+  @ApiQuery({ name: "access_token", required: false, description: "Access token for implicit flow" })
+  @ApiResponse({ status: 200, description: "OAuth callback successful" })
+  @ApiResponse({ status: 400, description: "Missing provider or code/access_token" })
+  @ApiResponse({ status: 401, description: "Cannot authenticate with provider" })
   async oauthCallback(
     @Query("provider") provider: string,
     @Query("code") code: string,
@@ -167,6 +195,10 @@ export class AuthController {
    */
   @UseGuards(JwtAuthGuard)
   @Get("me")
+  @ApiOperation({ summary: "Get authenticated user profile" })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: "User profile retrieved" })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
   getProfile(@Req() req) {
     return req.user;
   }
@@ -176,11 +208,17 @@ export class AuthController {
    */
   @Public()
   @Post("refresh")
+  @ApiOperation({ summary: "Refresh JWT token" })
+  @ApiBody({ type: RefreshTokenDto })
+  @ApiResponse({ status: 200, description: "Token refreshed successfully" })
   async refreshToken(@Body("refreshToken") refreshToken: string) {
     return this.authService.refreshToken(refreshToken);
   }
 
   @Post("supabase-login")
+  @ApiOperation({ summary: "Login with Supabase token" })
+  @ApiBody({ schema: { type: "object", properties: { access_token: { type: "string" } } } })
+  @ApiResponse({ status: 200, description: "Supabase login successful" })
   async supabaseLogin(@Body() body: { access_token: string }) {
     return this.authService.loginWithSupabaseToken(body.access_token);
   }
