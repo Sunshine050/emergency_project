@@ -1,18 +1,15 @@
-import { NestFactory } from "@nestjs/core";
-import { AppModule } from "./app.module";
-import { ValidationPipe } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import { IoAdapter } from "@nestjs/platform-socket.io";
-import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger"; // เพิ่ม import
-import { RedocModule, RedocOptions } from "nestjs-redoc"; // เพิ่ม import สำหรับ Redoc
+import { NestFactory, NestApplication } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { IoAdapter } from '@nestjs/platform-socket.io';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { RedocModule, RedocOptions } from 'nestjs-redoc';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  app.useLogger(["log", "error", "warn", "debug", "verbose"]);
+  const app: NestApplication = await NestFactory.create(AppModule);
+  app.useLogger(['log', 'error', 'warn', 'debug', 'verbose']);
   const configService = app.get(ConfigService);
-
-  // Setup WebSocket adapter
-  app.useWebSocketAdapter(new IoAdapter(app.getHttpServer()));
 
   // Configure global validation pipe
   app.useGlobalPipes(
@@ -28,31 +25,38 @@ async function bootstrap() {
 
   // ตั้งค่า Swagger
   const config = new DocumentBuilder()
-    .setTitle("Emergency Project API")
-    .setDescription("API documentation for Emergency Project")
-    .setVersion("1.0")
-    .addBearerAuth() // เพิ่ม Bearer Authentication สำหรับ JWT
+    .setTitle('Emergency Project API')
+    .setDescription('API documentation for Emergency Project')
+    .setVersion('1.0')
+    .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup("api", app, document); // Swagger UI จะอยู่ที่ /api
+  SwaggerModule.setup('api', app, document);
 
   // ตั้งค่า Redoc
   const redocOptions: RedocOptions = {
-    title: "Emergency Project API",
+    title: 'Emergency Project API',
     logo: {
-      url: "https://example.com/logo.png", // Replace with your logo URL
+      url: 'https://example.com/logo.png',
     },
     sortPropsAlphabetically: true,
     hideDownloadButton: false,
     hideHostname: false,
   };
-  await RedocModule.setup("docs", app, document, redocOptions); // Redoc UI จะอยู่ที่ /docs
+  await RedocModule.setup('docs', app, document, redocOptions);
 
   // Get port from environment variables
-  const port = configService.get("PORT") || 3000;
+  const port = configService.get('PORT') || 3000;
 
+  // เรียก listen ก่อน
   await app.listen(port);
+
+  // ตั้งค่า WebSocket adapter หลัง listen
+  app.useWebSocketAdapter(new IoAdapter(app));
+
   console.log(`Application is running on: http://localhost:${port}`);
   console.log(`Swagger UI is available at: http://localhost:${port}/api`);
-  console.log(`Redoc UI is available at: http://localhost:${port}/docs`); // เพิ่ม log
-}bootstrap();
+  console.log(`Redoc UI is available at: http://localhost:${port}/docs`);
+}
+
+bootstrap();

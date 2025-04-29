@@ -5,9 +5,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { io, Socket } from 'socket.io-client';
 import { AppModule } from '../src/app.module';
 import { EmergencyGrade, EmergencyType } from '../src/sos/dto/sos.dto';
+import { ConfigService } from '@nestjs/config';
 
 let app: INestApplication;
 let socket: Socket;
+let port: number;
 
 before(async () => {
   const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -15,64 +17,72 @@ before(async () => {
   }).compile();
 
   app = moduleFixture.createNestApplication();
-  await app.listen(3000);
+  const configService = app.get(ConfigService);
+  port = configService.get('PORT') || 3000; // ใช้พอร์ตจาก environment หรือ default เป็น 3000
+  await app.listen(port);
 });
 
 after(async () => {
-  await app.close();
+  if (app) {
+    await app.close();
+  }
 });
 
 beforeEach(async () => {
-  socket = io('http://localhost:3000/notifications', {
+  socket = io(`http://localhost:${port}/notifications`, {
     auth: {
-      token: 'test-token',
+      token: 'test-token', // ควร mock token หรือรับจาก endpoint login
     },
   });
-  await new Promise<void>((resolve) => socket.on('connect', resolve));
+  await new Promise<void>((resolve) => socket.on('connect', () => resolve()));
 });
 
 afterEach(() => {
-  if (socket.connected) {
+  if (socket && socket.connected) {
     socket.disconnect();
   }
 });
 
-test('should receive emergency notification', (t, done) => {
-  socket.on('emergency', (data) => {
-    try {
-      assert.ok(data.id);
-      assert.strictEqual(data.type, EmergencyType.ACCIDENT);
-      assert.strictEqual(data.grade, EmergencyGrade.URGENT);
-      done();
-    } catch (err) {
-      done(err as Error);
-    }
-  });
+test('should receive emergency notification', async () => {
+  await new Promise<void>((resolve, reject) => {
+    socket.on('emergency', (data) => {
+      try {
+        assert.ok(data.id, 'Emergency should have an ID');
+        assert.strictEqual(data.type, EmergencyType.ACCIDENT, 'Type should be ACCIDENT');
+        assert.strictEqual(data.grade, EmergencyGrade.URGENT, 'Grade should be URGENT');
+        resolve();
+      } catch (err) {
+        reject(err);
+      }
+    });
 
-  socket.emit('createEmergency', {
-    type: EmergencyType.ACCIDENT,
-    grade: EmergencyGrade.URGENT,
-    location: 'Test Location',
-    coordinates: {
-      latitude: 13.7563,
-      longitude: 100.5018,
-    },
+    socket.emit('createEmergency', {
+      type: EmergencyType.ACCIDENT,
+      grade: EmergencyGrade.URGENT,
+      location: 'Test Location',
+      coordinates: {
+        latitude: 13.7563,
+        longitude: 100.5018,
+      },
+    });
   });
 });
 
-test('should receive status updates', (t, done) => {
-  socket.on('status-update', (data) => {
-    try {
-      assert.ok(data.emergencyId);
-      assert.ok(data.status);
-      done();
-    } catch (err) {
-      done(err as Error);
-    }
-  });
+test('should receive status updates', async () => {
+  await new Promise<void>((resolve, reject) => {
+    socket.on('status-update', (data) => {
+      try {
+        assert.ok(data.emergencyId, 'Should have emergencyId');
+        assert.ok(data.status, 'Should have status');
+        resolve();
+      } catch (err) {
+        reject(err);
+      }
+    });
 
-  socket.emit('updateStatus', {
-    emergencyId: 'test-emergency-id',
-    status: 'IN_PROGRESS',
+    socket.emit('updateStatus', {
+      emergencyId: 'test-emergency-id',
+      status: 'IN_PROGRESS',
+    });
   });
 });
