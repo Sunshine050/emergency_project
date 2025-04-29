@@ -1,3 +1,5 @@
+import { test, before, after } from 'node:test';
+import assert from 'node:assert';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
@@ -5,81 +7,70 @@ import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { EmergencyGrade, EmergencyType } from '../src/sos/dto/sos.dto';
 
-describe('Emergency Response System (e2e)', () => {
-  let app: INestApplication;
-  let prismaService: PrismaService;
-  let authToken: string;
+let app: INestApplication;
+let prismaService: PrismaService;
+let authToken: string;
 
-  beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+before(async () => {
+  const moduleFixture: TestingModule = await Test.createTestingModule({
+    imports: [AppModule],
+  }).compile();
 
-    app = moduleFixture.createNestApplication();
-    prismaService = app.get<PrismaService>(PrismaService);
-    await app.init();
+  app = moduleFixture.createNestApplication();
+  prismaService = app.get<PrismaService>(PrismaService);
+  await app.init();
 
-    // Clean up the database before tests
-    await prismaService.cleanDatabase();
-  });
+  // Clean up the database before tests
+  await prismaService.cleanDatabase();
+});
 
-  afterAll(async () => {
-    await prismaService.cleanDatabase();
-    await app.close();
-  });
+after(async () => {
+  await prismaService.cleanDatabase();
+  await app.close();
+});
 
-  describe('Authentication', () => {
-    it('should authenticate user and return JWT token', async () => {
-      // Mock authentication หรือใช้ข้อมูลผู้ใช้ที่สร้างไว้สำหรับทดสอบ
-      const response = await request(app.getHttpServer())
-        .post('/auth/login')
-        .send({
-          email: 'test@example.com', // เปลี่ยนจาก provider เป็นข้อมูลที่เหมาะสม
-          password: 'testpassword',
-        })
-        .expect(200);
+test('should authenticate user and return JWT token', async () => {
+  const response = await request(app.getHttpServer())
+    .post('/auth/login')
+    .send({
+      email: 'test@example.com',
+      password: 'testpassword',
+    })
+    .expect(200);
 
-      expect(response.body).toHaveProperty('access_token'); // คาดหวัง token ไม่ใช่ url
-      authToken = response.body.access_token; // เก็บ token
-    });
-  });
+  assert.ok(response.body.access_token, 'Response should have access_token');
+  authToken = response.body.access_token;
+});
 
-  describe('Emergency Flow', () => {
-    it('should create emergency request and notify responders', async () => {
-      // ตรวจสอบว่าได้ token มาก่อน
-      expect(authToken).toBeDefined();
+test('should create emergency request and notify responders', async () => {
+  assert.ok(authToken, 'Auth token should be defined');
 
-      // Create emergency request
-      const emergencyResponse = await request(app.getHttpServer())
-        .post('/sos')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({
-          description: 'Car accident on main street',
-          latitude: 13.7563,
-          longitude: 100.5018,
-          grade: EmergencyGrade.URGENT,
-          type: EmergencyType.ACCIDENT,
-          medicalInfo: {
-            injuries: ['head trauma', 'broken arm'],
-            consciousness: 'conscious',
-          },
-        })
-        .expect(201);
+  const emergencyResponse = await request(app.getHttpServer())
+    .post('/sos')
+    .set('Authorization', `Bearer ${authToken}`)
+    .send({
+      description: 'Car accident on main street',
+      latitude: 13.7563,
+      longitude: 100.5018,
+      grade: EmergencyGrade.URGENT,
+      type: EmergencyType.ACCIDENT,
+      medicalInfo: {
+        injuries: ['head trauma', 'broken arm'],
+        consciousness: 'conscious',
+      },
+    })
+    .expect(201);
 
-      expect(emergencyResponse.body).toHaveProperty('id');
-      const emergencyId = emergencyResponse.body.id;
+  assert.ok(emergencyResponse.body.id, 'Emergency response should have an id');
+  const emergencyId = emergencyResponse.body.id;
 
-      // Check emergency status
-      const statusResponse = await request(app.getHttpServer())
-        .get('/dashboard/active-emergencies')
-        .set('Authorization', `Bearer ${authToken}`)
-        .expect(200);
+  const statusResponse = await request(app.getHttpServer())
+    .get('/dashboard/active-emergencies')
+    .set('Authorization', `Bearer ${authToken}`)
+    .expect(200);
 
-      expect(statusResponse.body).toContainEqual(
-        expect.objectContaining({
-          id: emergencyId,
-        }),
-      );
-    });
-  });
+  assert.ok(
+    statusResponse.body.some((item: any) => item.id === emergencyId),
+    'Active emergencies should contain the created emergency',
+  );
 });

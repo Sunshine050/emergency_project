@@ -1,4 +1,4 @@
-import { NestFactory, NestApplication } from '@nestjs/core';
+import { NestFactory, INestApplication } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -7,7 +7,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { RedocModule, RedocOptions } from 'nestjs-redoc';
 
 async function bootstrap() {
-  const app: NestApplication = await NestFactory.create(AppModule);
+  const app: INestApplication = await NestFactory.create(AppModule); // ระบุ type ชัดเจน
   app.useLogger(['log', 'error', 'warn', 'debug', 'verbose']);
   const configService = app.get(ConfigService);
 
