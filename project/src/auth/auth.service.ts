@@ -21,6 +21,12 @@ import { RegisterDto, LoginDto } from "./dto/auth.dto";
 import { config } from "dotenv";
 config();
 
+// ฟังก์ชันช่วยกรองข้อมูลที่อ่อนไหวก่อนล็อก
+const sanitizeLogData = (data: any) => {
+  const { access_token, refresh_token, password, ...safeData } = data;
+  return safeData;
+};
+
 @Injectable()
 export class AuthService {
   private supabase: SupabaseClient;
@@ -31,10 +37,35 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
   ) {
-    this.supabase = createClient(
-      this.configService.get<string>("SUPABASE_URL"),
-      this.configService.get<string>("SUPABASE_SERVICE_ROLE_KEY"),
-    );
+    const supabaseUrl = this.configService.get<string>("SUPABASE_URL");
+    const supabaseServiceRoleKey = this.configService.get<string>("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!supabaseUrl || !supabaseServiceRoleKey) {
+      this.logger.error("Supabase configuration missing: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set");
+      throw new InternalServerErrorException("Supabase configuration is incomplete");
+    }
+
+    this.supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+    this.logger.log("Supabase client initialized successfully");
+  }
+
+  /**
+   * Test Supabase connection
+   */
+  async testSupabaseConnection() {
+    this.logger.log("Testing Supabase connection");
+    try {
+      const { data, error } = await this.supabase.from('users').select('*').limit(1);
+      if (error) {
+        this.logger.error(`Supabase connection test failed: ${error.message}`);
+        throw new InternalServerErrorException(`Supabase connection test failed: ${error.message}`);
+      }
+      this.logger.log("Supabase connection test successful", { data });
+      return { data, error: null };
+    } catch (error) {
+      this.logger.error(`Error testing Supabase connection: ${error.message}`, error.stack);
+      throw new InternalServerErrorException(`Cannot connect to Supabase: ${error.message}`);
+    }
   }
 
   /**
@@ -91,7 +122,7 @@ export class AuthService {
       this.logger.error(`Error during registration: ${error.message}`, error.stack);
       throw error instanceof ConflictException
         ? error
-        : new InternalServerErrorException("Cannot register user");
+        : new InternalServerErrorException(`Cannot register user: ${error.message}`);
     }
   }
 
@@ -148,7 +179,7 @@ export class AuthService {
         expiresIn: this.configService.get<string>("JWT_REFRESH_EXPIRES_IN", "30d"),
       });
 
-      this.logger.log(`Login successful for user: ${user.id}`);
+      this.logger.log(`Login successful for user: ${user.id}, role: ${user.role}`);
       return {
         access_token: accessToken,
         refresh_token: refreshToken,
@@ -159,7 +190,7 @@ export class AuthService {
       this.logger.error(`Error during login: ${error.message}`, error.stack);
       throw error instanceof UnauthorizedException
         ? error
-        : new InternalServerErrorException("Cannot login");
+        : new InternalServerErrorException(`Cannot login: ${error.message}`);
     }
   }
 
@@ -178,6 +209,10 @@ export class AuthService {
 
     try {
       const redirectUrl = this.configService.get<string>("OAUTH_REDIRECT_URL");
+      if (!redirectUrl) {
+        this.logger.error("OAUTH_REDIRECT_URL not configured");
+        throw new InternalServerErrorException("OAuth redirect URL not configured");
+      }
       this.logger.log(`Redirect URL: ${redirectUrl}`);
 
       const { data, error } = await this.supabase.auth.signInWithOAuth({
@@ -193,17 +228,17 @@ export class AuthService {
 
       if (error) {
         this.logger.error(`Cannot generate auth URL: ${error.message}`);
-        throw new InternalServerErrorException("Cannot generate authentication URL");
+        throw new InternalServerErrorException(`Cannot generate authentication URL: ${error.message}`);
       }
 
-      this.logger.log(`Successfully generated auth URL: ${data.url}`);
+      this.logger.log(`Successfully generated auth URL for provider: ${provider}`);
       return data.url;
     } catch (error) {
       this.logger.error(
         `Error generating ${provider} auth URL: ${error.message}`,
         error.stack,
       );
-      throw new InternalServerErrorException("Cannot initiate OAuth flow");
+      throw new InternalServerErrorException(`Cannot initiate OAuth flow: ${error.message}`);
     }
   }
 
@@ -211,17 +246,17 @@ export class AuthService {
    * Handles the OAuth callback from providers
    */
   async handleOAuthCallback(provider: string, code: string): Promise<AuthTokens> {
-    this.logger.log(`Handling OAuth callback for provider: ${provider} with code: ${code}`);
+    this.logger.log(`Handling OAuth callback for provider: ${provider}`);
 
     try {
       const { data, error } = await this.supabase.auth.exchangeCodeForSession(code);
 
       if (error || !data?.session) {
         this.logger.error(`OAuth code exchange failed: ${error?.message}`);
-        throw new UnauthorizedException("Cannot authenticate with provider");
+        throw new UnauthorizedException(`Cannot authenticate with provider: ${error?.message}`);
       }
 
-      this.logger.log(`OAuth session data: ${JSON.stringify(data)}`);
+      this.logger.log(`OAuth session received for user: ${data.user?.email || 'unknown'}`);
 
       const supabaseUser = data.user as SupabaseUser;
 
@@ -240,7 +275,7 @@ export class AuthService {
 
       const accessToken = this.jwtService.sign(payload);
 
-      this.logger.log(`Generated access token for user: ${user.id}`);
+      this.logger.log(`Generated access token for user: ${user.id}, email: ${user.email}, role: ${user.role}`);
 
       return {
         access_token: accessToken,
@@ -253,7 +288,7 @@ export class AuthService {
       if (error instanceof UnauthorizedException) {
         throw error;
       }
-      throw new InternalServerErrorException("Cannot process authentication");
+      throw new InternalServerErrorException(`Cannot process authentication: ${error.message}`);
     }
   }
 
@@ -261,7 +296,12 @@ export class AuthService {
    * Find existing user or create a new one based on OAuth user data
    */
   public async findOrCreateUser(supabaseUser: SupabaseUser, provider: string) {
-    this.logger.log(`Finding or creating user from provider: ${provider}`);
+    this.logger.log(`Finding or creating user from provider: ${provider}, email: ${supabaseUser.email}`);
+
+    if (!supabaseUser?.id || !supabaseUser?.email) {
+      this.logger.error('Supabase user data incomplete', supabaseUser);
+      throw new BadRequestException('Invalid Supabase user data: missing id or email');
+    }
 
     try {
       let user = await this.prisma.user.findUnique({
@@ -269,18 +309,18 @@ export class AuthService {
       });
 
       if (!user) {
-        this.logger.log("User not found, creating new user");
+        this.logger.log(`User not found, creating new user for email: ${supabaseUser.email}`);
 
         const { user_metadata } = supabaseUser;
 
         let firstName = "";
         let lastName = "";
 
-        if (user_metadata.full_name) {
+        if (user_metadata?.full_name) {
           const nameParts = user_metadata.full_name.split(" ");
           firstName = nameParts[0] || "";
           lastName = nameParts.slice(1).join(" ") || "";
-        } else if (user_metadata.name) {
+        } else if (user_metadata?.name) {
           const nameParts = user_metadata.name.split(" ");
           firstName = nameParts[0] || "";
           lastName = nameParts.slice(1).join(" ") || "";
@@ -292,19 +332,19 @@ export class AuthService {
             firstName,
             lastName,
             role: UserRole.PATIENT,
-            profileImageUrl: user_metadata.avatar_url || user_metadata.picture,
+            profileImageUrl: user_metadata?.avatar_url || user_metadata?.picture || null,
             supabaseUserId: supabaseUser.id,
             status: UserStatus.ACTIVE,
           },
         });
 
-        this.logger.log(`Created new user from ${provider} OAuth: ${user.id}`);
+        this.logger.log(`Created new user from ${provider} OAuth: ${user.id}, email: ${user.email}`);
       }
 
       return user;
     } catch (error) {
       this.logger.error(`Error finding/creating user: ${error.message}`, error.stack);
-      throw new InternalServerErrorException("Cannot process user data");
+      throw new InternalServerErrorException(`Cannot process user data: ${error.message}`);
     }
   }
 
@@ -312,7 +352,7 @@ export class AuthService {
    * Validates a JWT token
    */
   async validateToken(token: string): Promise<TokenPayload> {
-    this.logger.log(`Validating token: ${token}`);
+    this.logger.log(`Validating token for a user`);
 
     try {
       const payload = this.jwtService.verify<TokenPayload>(token);
@@ -326,19 +366,19 @@ export class AuthService {
         throw new UnauthorizedException("User not found or inactive");
       }
 
-      this.logger.log(`Token validation successful for user: ${payload.sub}`);
+      this.logger.log(`Token validation successful for user: ${payload.sub}, email: ${payload.email}`);
       return payload;
     } catch (error) {
       this.logger.error(`Error validating token: ${error.message}`, error.stack);
-      throw new UnauthorizedException("Invalid token");
+      throw new UnauthorizedException(`Invalid token: ${error.message}`);
     }
   }
 
   /**
    * Refreshes an access token using a refresh token
    */
-  async refreshToken(refreshToken: string): Promise<{ access_token: string }> {
-    this.logger.log(`Refreshing token with refresh token`);
+  async refreshToken(refreshToken: string): Promise<AuthTokens> {
+    this.logger.log(`Refreshing token for a user`);
 
     try {
       // Check if it's a refresh token from OAuth (Supabase) or regular login
@@ -365,9 +405,18 @@ export class AuthService {
           role: user.role.toString(),
         };
 
-        this.logger.log(`Generated new access token for user: ${user.id}`);
+        const newAccessToken = this.jwtService.sign(newPayload);
+        const newRefreshToken = this.jwtService.sign(newPayload, {
+          secret: this.configService.get<string>("JWT_REFRESH_SECRET"),
+          expiresIn: this.configService.get<string>("JWT_REFRESH_EXPIRES_IN", "30d"),
+        });
+
+        this.logger.log(`Generated new access token for user: ${user.id}, email: ${user.email}, role: ${user.role}`);
         return {
-          access_token: this.jwtService.sign(newPayload),
+          access_token: newAccessToken,
+          refresh_token: newRefreshToken,
+          token_type: "Bearer",
+          expires_in: parseInt(this.configService.get("JWT_EXPIRES_IN", "604800")),
         };
       } catch (jwtError) {
         // If not a JWT refresh token, try Supabase (for OAuth)
@@ -377,7 +426,7 @@ export class AuthService {
 
         if (error || !data?.session) {
           this.logger.error(`Cannot refresh session: ${error?.message}`);
-          throw new UnauthorizedException("Invalid refresh token");
+          throw new UnauthorizedException(`Invalid refresh token: ${error?.message}`);
         }
 
         const user = await this.prisma.user.findUnique({
@@ -395,31 +444,54 @@ export class AuthService {
           role: user.role.toString(),
         };
 
-        this.logger.log(`Generated new access token for user: ${user.id}`);
+        const newAccessToken = this.jwtService.sign(payload);
+        const newRefreshToken = this.jwtService.sign(payload, {
+          secret: this.configService.get<string>("JWT_REFRESH_SECRET"),
+          expiresIn: this.configService.get<string>("JWT_REFRESH_EXPIRES_IN", "30d"),
+        });
+
+        this.logger.log(`Generated new access token for user: ${user.id}, email: ${user.email}, role: ${user.role}`);
         return {
-          access_token: this.jwtService.sign(payload),
+          access_token: newAccessToken,
+          refresh_token: newRefreshToken,
+          token_type: "Bearer",
+          expires_in: parseInt(this.configService.get("JWT_EXPIRES_IN", "604800")),
         };
       }
     } catch (error) {
       this.logger.error(`Error refreshing token: ${error.message}`, error.stack);
-      throw new UnauthorizedException("Cannot refresh token");
+      throw new UnauthorizedException(`Cannot refresh token: ${error.message}`);
     }
   }
 
+  /**
+   * Login with Supabase access token
+   */
   async loginWithSupabaseToken(access_token: string): Promise<AuthTokens> {
-    this.logger.log(`Validating access token from Supabase`);
+    this.logger.log(`Validating access token from Supabase: ${access_token.substring(0, 10)}...`);
 
     try {
       const { data, error } = await this.supabase.auth.getUser(access_token);
+      this.logger.log('Supabase getUser result:', { user: data?.user?.email, error: error?.message });
 
       if (error || !data?.user) {
         this.logger.error(`Cannot validate access token: ${error?.message}`);
-        throw new UnauthorizedException("Cannot validate token");
+        throw new UnauthorizedException(`Cannot validate token: ${error?.message || 'No user data'}`);
       }
 
       const supabaseUser = data.user as SupabaseUser;
 
+      if (!supabaseUser?.email || !supabaseUser?.id) {
+        this.logger.error('Supabase user data incomplete', supabaseUser);
+        throw new BadRequestException('Invalid Supabase user data: missing email or id');
+      }
+
       const user = await this.findOrCreateUser(supabaseUser, "supabase");
+
+      if (!user?.id || !user?.email) {
+        this.logger.error('Created user data incomplete', user);
+        throw new InternalServerErrorException('Failed to create or retrieve user');
+      }
 
       const payload: TokenPayload = {
         sub: user.id,
@@ -433,6 +505,7 @@ export class AuthService {
         expiresIn: this.configService.get<string>("JWT_REFRESH_EXPIRES_IN", "30d"),
       });
 
+      this.logger.log(`Login successful with Supabase token for user: ${user.id}, email: ${user.email}, role: ${user.role}`);
       return {
         access_token: jwtAccessToken,
         refresh_token: jwtRefreshToken,
@@ -441,19 +514,31 @@ export class AuthService {
       };
     } catch (error) {
       this.logger.error(`Error logging in with Supabase token: ${error.message}`, error.stack);
-      throw new InternalServerErrorException("Cannot login with Supabase token");
+      if (error instanceof UnauthorizedException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(`Cannot login with Supabase token: ${error.message}`);
     }
   }
-
+  /**
+   * Get user from Supabase access token
+   */
   public async getUserFromAccessToken(accessToken: string): Promise<SupabaseUser> {
+    this.logger.log(`Retrieving user from access token: ${accessToken.substring(0, 10)}...`);
     const { data, error } = await this.supabase.auth.getUser(accessToken);
     if (error || !data?.user) {
-      throw new UnauthorizedException('Cannot authenticate with provider');
+      this.logger.error(`Cannot authenticate with provider: ${error?.message}`);
+      throw new UnauthorizedException(`Cannot authenticate with provider: ${error?.message}`);
     }
+    this.logger.log(`Successfully retrieved user from access token, email: ${data.user.email}`);
     return data.user as SupabaseUser;
   }
 
+  /**
+   * Sign JWT token
+   */
   public signJwt(payload: TokenPayload): string {
+    this.logger.log(`Signing JWT for user: ${payload.email}`);
     return this.jwtService.sign(payload);
   }
 }

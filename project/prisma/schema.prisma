@@ -23,7 +23,7 @@ model User {
   updatedAt         DateTime           @updatedAt
   organizationId    String?
   password          String?
-  medicalInfo       Json?              // เพิ่ม field นี้
+  medicalInfo       Json?              // ตัวอย่าง: { "conditions": ["asthma"], "allergies": ["penicillin"] }
   emergencyRequests EmergencyRequest[] @relation("PatientRequests")
   notifications     Notification[]
   organization      Organization?      @relation(fields: [organizationId], references: [id])
@@ -42,6 +42,7 @@ model Organization {
   postalCode         String
   latitude           Float?
   longitude          Float?
+  location           Json?               // เพิ่มฟิลด์ location เพื่อเก็บ { "address": "...", "coordinates": { "lat": ..., "lng": ... } }
   contactPhone       String
   contactEmail       String?
   status             String              @default("ACTIVE")
@@ -66,18 +67,23 @@ enum EmergencyStatus {
 }
 
 model EmergencyRequest {
-  id          String              @id @default(uuid())
-  status      EmergencyStatus     @default(PENDING) // เปลี่ยนจาก String เป็น EmergencyStatus
-  description String
-  location    String?
-  latitude    Float?
-  longitude   Float?
-  medicalInfo Json?
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
-  patientId   String
-  patient     User                @relation("PatientRequests", fields: [patientId], references: [id])
-  responses   EmergencyResponse[]
+  id                String              @id @default(uuid())
+  title             String?             // เพิ่ม: ชื่อเคส เช่น "Car Accident on Highway 7"
+  status            EmergencyStatus     @default(PENDING)
+  severity          Int?                // เพิ่ม: ระดับความรุนแรง (1-4)
+  emergencyType     String?             // เพิ่ม: ประเภทเหตุฉุกเฉิน เช่น "Car Accident"
+  description       String
+  symptoms          String[]            // เพิ่ม: อาการ เช่น ["Chest Pain", "Bleeding"]
+  location          Json?               // เปลี่ยน: เก็บ { "address": "Highway 7", "coordinates": { "lat": 13.9876, "lng": 100.5432 } }
+  latitude          Float?              // เก็บสำเนาเพื่อให้ query ง่ายขึ้น
+  longitude         Float?              // เก็บสำเนาเพื่อให้ query ง่ายขึ้น
+  medicalInfo       Json?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  patientId         String
+  patient           User                @relation("PatientRequests", fields: [patientId], references: [id])
+  responses         EmergencyResponse[]
+  notifications     Notification[]      // เพิ่ม: ความสัมพันธ์กับการแจ้งเตือน
 
   @@map("emergency_requests")
   @@schema("emergency_project")
@@ -87,7 +93,7 @@ model EmergencyResponse {
   id                 String           @id @default(uuid())
   status             String
   notes              String?
-  dispatchTime       DateTime?
+  assignedAt         DateTime?        // เปลี่ยนจาก dispatchTime เป็น assignedAt
   arrivalTime        DateTime?
   completionTime     DateTime?
   createdAt          DateTime         @default(now())
@@ -102,16 +108,18 @@ model EmergencyResponse {
 }
 
 model Notification {
-  id        String   @id @default(uuid()) // แก้จาก uuid10(uuid())
-  type      String
-  title     String
-  body      String
-  isRead    Boolean  @default(false)
-  metadata  Json?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  id                 String           @id @default(uuid())
+  type               String
+  title              String
+  body               String
+  isRead             Boolean          @default(false)
+  metadata           Json?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  userId             String
+  user               User             @relation(fields: [userId], references: [id])
+  emergencyRequestId String?          // เพิ่ม: เชื่อมโยงกับเคสฉุกเฉิน
+  emergencyRequest   EmergencyRequest? @relation(fields: [emergencyRequestId], references: [id])
 
   @@map("notifications")
   @@schema("emergency_project")

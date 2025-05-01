@@ -4,16 +4,15 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect,
   OnGatewayInit,
-} from "@nestjs/websockets";
-import { Server, Socket } from "socket.io";
-import { Logger } from "@nestjs/common";
-import { JwtService } from "@nestjs/jwt";
-import { AuthService } from "../auth/auth.service";
-import { PrismaService } from "../prisma/prisma.service";
+} from '@nestjs/websockets';
+import { Server, Socket } from 'socket.io';
+import { Logger } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { AuthService } from '../auth/auth.service';
+import { PrismaService } from '../prisma/prisma.service';
 
-// กำหนด interface TokenPayload
 interface TokenPayload {
-  id: string;
+  id?: string;
   sub: string;
   email: string;
   role: string;
@@ -23,17 +22,15 @@ interface TokenPayload {
 
 @WebSocketGateway({
   cors: {
-    origin: "*", // In production, replace with actual frontend domain
-    methods: ["GET", "POST"],
+    origin: 'http://localhost:3000',
+    methods: ['GET', 'POST'],
     credentials: true,
   },
-  namespace: "/notifications",
+  namespace: '/notifications',
 })
-export class NotificationGateway
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
-{
+export class NotificationGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
-  private logger = new Logger("NotificationGateway");
+  private logger = new Logger('NotificationGateway');
   private userSocketMap: Map<string, Set<string>> = new Map();
 
   constructor(
@@ -43,35 +40,36 @@ export class NotificationGateway
   ) {}
 
   afterInit(server: Server) {
-    this.logger.log("Notification WebSocket Gateway initialized");
+    this.logger.log('Notification WebSocket Gateway initialized');
   }
 
   async handleConnection(client: Socket) {
     try {
       const token = this.extractToken(client);
       if (!token) {
+        this.logger.warn(`Missing token from client ${client.id}`);
         this.disconnect(client);
         return;
       }
 
       const user = await this.validateToken(token);
+      this.logger.log(`Decoded user: ${JSON.stringify(user)}`);
+
       if (!user) {
+        this.logger.warn(`Invalid token for client ${client.id}`);
         this.disconnect(client);
         return;
       }
 
-      // Store socket connection
-      this.storeUserSocket(user.id, client.id);
+      const userId = user.id || user.sub;
+      this.storeUserSocket(userId, client.id);
+      client.join(`user:${userId}`);
 
-      // Join user-specific room
-      client.join(`user:${user.id}`);
-
-      // Join role-based room
       if (user.role) {
         client.join(`role:${user.role}`);
       }
 
-      this.logger.log(`Client connected: ${client.id} for user ${user.id}`);
+      this.logger.log(`Client connected: ${client.id} for user ${userId}`);
     } catch (error) {
       this.logger.error(`Connection error: ${error.message}`);
       this.disconnect(client);
@@ -84,19 +82,17 @@ export class NotificationGateway
   }
 
   private extractToken(client: Socket): string | null {
-    const auth =
-      client.handshake.auth.token || client.handshake.headers.authorization;
-
+    const auth = client.handshake.auth.token || client.handshake.headers.authorization;
     if (!auth) return null;
-
-    return auth.replace("Bearer ", "");
+    return auth.replace('Bearer ', '');
   }
 
   private async validateToken(token: string): Promise<TokenPayload | null> {
     try {
       const payload = await this.authService.validateToken(token);
       return payload as TokenPayload;
-    } catch {
+    } catch (err) {
+      this.logger.warn(`Token validation failed: ${err.message}`);
       return null;
     }
   }
@@ -124,24 +120,50 @@ export class NotificationGateway
     client.disconnect(true);
   }
 
-  // Public methods for sending notifications
   sendToUser(userId: string, event: string, data: any) {
+    this.logger.log(`Sending ${event} to user:${userId} - Data: ${JSON.stringify(data)}`);
     this.server.to(`user:${userId}`).emit(event, data);
   }
 
   sendToRole(role: string, event: string, data: any) {
+    this.logger.log(`Sending ${event} to role:${role} - Data: ${JSON.stringify(data)}`);
     this.server.to(`role:${role}`).emit(event, data);
   }
 
   broadcastEmergency(data: any) {
+    const payload = {
+      id: data.id,
+      type: data.type,
+      grade: data.grade,
+      location: data.location,
+      coordinates: data.coordinates,
+      assignedTo: data.assignedTo, // เพิ่ม assignedTo เพื่อให้ frontend กรองได้
+    };
+    this.logger.log(`Broadcasting emergency event: ${JSON.stringify(payload)}`);
     this.server
-      .to("role:EMERGENCY_CENTER")
-      .to("role:HOSPITAL")
-      .to("role:RESCUE_TEAM")
-      .emit("emergency", data);
+      .to('role:EMERGENCY_CENTER')
+      .to('role:HOSPITAL')
+      .to('role:RESCUE_TEAM')
+      .emit('emergency', payload);
   }
 
-  broadcastStatusUpdate(data: any) {
-    this.server.emit("status-update", data);
+  broadcastStatusUpdate(data: { emergencyId: string; status: string; assignedTo?: string }) {
+    const payload = {
+      emergencyId: data.emergencyId,
+      status: data.status,
+      assignedTo: data.assignedTo,
+    };
+    this.logger.log(`Broadcasting status-update event: ${JSON.stringify(payload)}`);
+    // ส่งไปยัง role ที่เกี่ยวข้องเท่านั้น
+    this.server
+      .to('role:EMERGENCY_CENTER')
+      .to('role:HOSPITAL')
+      .to('role:RESCUE_TEAM')
+      .emit('status-update', payload);
+
+    // ถ้ามี assignedTo, ส่งไปยัง user ที่เป็น assignedTo ด้วย
+    if (data.assignedTo) {
+      this.sendToUser(data.assignedTo, 'status-update', payload);
+    }
   }
 }

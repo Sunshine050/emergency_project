@@ -1,39 +1,87 @@
-import { IsString, IsOptional, IsDateString, IsEnum } from "class-validator";
-
-enum ReportType {
-  DAILY = "DAILY",
-  WEEKLY = "WEEKLY",
-  MONTHLY = "MONTHLY",
-  CUSTOM = "CUSTOM",
-}
-
-export class ReportQueryDto {
-  @IsEnum(ReportType)
-  type: ReportType;
-
-  @IsOptional()
-  @IsDateString()
-  startDate?: string;
-
-  @IsOptional()
-  @IsDateString()
-  endDate?: string;
-
-  @IsOptional()
-  @IsString()
-  region?: string;
-
-  @IsOptional()
-  @IsString()
-  category?: string;
-}
+import { ApiProperty } from "@nestjs/swagger";
 
 export class DashboardStatsResponseDto {
+  @ApiProperty()
   totalEmergencies: number;
+
+  @ApiProperty()
   activeEmergencies: number;
+
+  @ApiProperty()
   completedEmergencies: number;
+
+  @ApiProperty()
   cancelledEmergencies: number;
+
+  @ApiProperty()
   averageResponseTime: number;
+
+  @ApiProperty()
   activeTeams: number;
+
+  @ApiProperty()
   availableHospitalBeds: number;
+
+  @ApiProperty()
+  connectedHospitals: number;
+
+  @ApiProperty()
+  criticalCases: number;
+}
+
+export class EmergencyCaseDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  title: string;
+
+  @ApiProperty()
+  status: string;
+
+  @ApiProperty()
+  severity: number;
+
+  @ApiProperty()
+  reportedAt: string;
+
+  @ApiProperty()
+  patientName: string;
+
+  @ApiProperty()
+  contactNumber: string;
+
+  @ApiProperty()
+  emergencyType: string;
+
+  @ApiProperty()
+  location: {
+    address: string;
+    coordinates: {
+      lat: number;
+      lng: number;
+    };
+  };
+
+  @ApiProperty({ required: false })
+  assignedTo?: string;
+
+  @ApiProperty()
+  description: string;
+
+  @ApiProperty()
+  symptoms: string[];
+}
+
+export class AssignCaseDto {
+  @ApiProperty()
+  caseId: string;
+
+  @ApiProperty()
+  assignedToId: string;
+}
+
+export class CancelCaseDto {
+  @ApiProperty()
+  caseId: string;
 }

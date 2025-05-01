@@ -13,7 +13,7 @@ import {
 } from "@nestjs/common";
 import { Response } from "express";
 import { AuthService } from "./auth.service";
-import { OAuthLoginDto, RegisterDto, LoginDto, RefreshTokenDto } from "./dto/auth.dto"; // เพิ่ม RefreshTokenDto
+import { OAuthLoginDto, RegisterDto, LoginDto, RefreshTokenDto } from "./dto/auth.dto";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard";
 import { ConfigService } from "@nestjs/config";
 import { Public } from "./decorators/public.decorator";
@@ -27,6 +27,12 @@ import {
   ApiBody,
   ApiQuery,
 } from "@nestjs/swagger";
+
+// ฟังก์ชันช่วยกรองข้อมูลที่อ่อนไหวก่อนล็อก
+const sanitizeLogData = (data: any) => {
+  const { access_token, refresh_token, ...safeData } = data;
+  return safeData;
+};
 
 @ApiTags("Auth")
 @Controller("auth")
@@ -48,8 +54,10 @@ export class AuthController {
   @ApiResponse({ status: 201, description: "Registration successful" })
   @ApiResponse({ status: 400, description: "Registration failed" })
   async register(@Body() registerDto: RegisterDto, @Res() res: Response) {
+    this.logger.log(`Register endpoint hit with email: ${registerDto.email}, role: ${registerDto.role}`);
     try {
       const user = await this.authService.register(registerDto);
+      this.logger.log(`Registration successful for email: ${user.email}, role: ${user.role}`);
       return res.status(HttpStatus.CREATED).json({
         message: "Registration successful",
         user: {
@@ -82,8 +90,10 @@ export class AuthController {
   @ApiResponse({ status: 200, description: "Login successful" })
   @ApiResponse({ status: 401, description: "Login failed" })
   async login(@Body() loginDto: LoginDto, @Res() res: Response) {
+    this.logger.log(`Login endpoint hit with email: ${loginDto.email}`);
     try {
       const authResult = await this.authService.login(loginDto);
+      this.logger.log(`Login successful for email: ${loginDto.email}, token_type: ${authResult.token_type}, expires_in: ${authResult.expires_in}`);
       return res.status(HttpStatus.OK).json({
         message: "Login successful",
         access_token: authResult.access_token,
@@ -110,8 +120,10 @@ export class AuthController {
   @ApiResponse({ status: 200, description: "OAuth URL generated" })
   @ApiResponse({ status: 401, description: "Cannot initiate OAuth login" })
   async oauthLogin(@Body() oauthLoginDto: OAuthLoginDto, @Res() res: Response) {
+    this.logger.log(`OAuth login endpoint hit with provider: ${oauthLoginDto.provider}`);
     try {
       const authUrl = await this.authService.generateAuthUrl(oauthLoginDto.provider);
+      this.logger.log(`OAuth URL generated for provider: ${oauthLoginDto.provider}`);
       return res.status(HttpStatus.OK).json({ url: authUrl });
     } catch (error) {
       this.logger.error(`Error in OAuth login: ${error.message}`, error.stack);
@@ -137,7 +149,7 @@ export class AuthController {
     @Query("access_token") accessToken: string,
     @Res() res: Response,
   ) {
-    this.logger.debug(`Received callback -> provider: ${provider}, code: ${code}, access_token: ${accessToken}`);
+    this.logger.log(`OAuth callback endpoint hit with provider: ${provider}, code: ${code ? 'present' : 'not present'}, access_token: ${accessToken ? 'present' : 'not present'}`);
 
     if (!provider) {
       this.logger.warn("Missing provider in callback");
@@ -151,6 +163,7 @@ export class AuthController {
       if (code) {
         // Authorization Code Flow
         authResult = await this.authService.handleOAuthCallback(provider, code);
+        this.logger.log(`OAuth callback successful (code flow) for provider: ${provider}, token_type: ${authResult.token_type}, expires_in: ${authResult.expires_in}`);
       } else if (accessToken) {
         // Implicit Flow: Use access_token directly
         const supabaseUser = await this.authService.getUserFromAccessToken(accessToken);
@@ -167,6 +180,7 @@ export class AuthController {
           token_type: "Bearer",
           expires_in: parseInt(this.configService.get("JWT_EXPIRES_IN", "604800")),
         };
+        this.logger.log(`OAuth callback successful (implicit flow) for email: ${user.email}, role: ${user.role}, token_type: ${authResult.token_type}, expires_in: ${authResult.expires_in}`);
       } else {
         this.logger.warn("Missing code or access_token in callback");
         return res.status(HttpStatus.BAD_REQUEST).json({
@@ -200,6 +214,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: "User profile retrieved" })
   @ApiResponse({ status: 401, description: "Unauthorized" })
   getProfile(@Req() req) {
+    this.logger.log(`Get profile endpoint hit for email: ${req.user.email}, role: ${req.user.role}`);
     return req.user;
   }
 
@@ -212,7 +227,10 @@ export class AuthController {
   @ApiBody({ type: RefreshTokenDto })
   @ApiResponse({ status: 200, description: "Token refreshed successfully" })
   async refreshToken(@Body("refreshToken") refreshToken: string) {
-    return this.authService.refreshToken(refreshToken);
+    this.logger.log('Refresh token endpoint hit');
+    const result = await this.authService.refreshToken(refreshToken);
+    this.logger.log(`Token refresh successful, token_type: ${result.token_type}, expires_in: ${result.expires_in}`);
+    return result;
   }
 
   @Post("supabase-login")
@@ -220,6 +238,9 @@ export class AuthController {
   @ApiBody({ schema: { type: "object", properties: { access_token: { type: "string" } } } })
   @ApiResponse({ status: 200, description: "Supabase login successful" })
   async supabaseLogin(@Body() body: { access_token: string }) {
-    return this.authService.loginWithSupabaseToken(body.access_token);
+    this.logger.log('Supabase login endpoint hit');
+    const result = await this.authService.loginWithSupabaseToken(body.access_token);
+    this.logger.log(`Supabase login successful, token_type: ${result.token_type}, expires_in: ${result.expires_in}`);
+    return result;
   }
 }

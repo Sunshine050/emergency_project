@@ -98,7 +98,3 @@ Real-time communication uses these main event channels:
 3. After authentication, provider redirects to our callback URL
 4. Backend exchanges code for tokens and creates/updates user record
 5. JWT token is issued for subsequent API calls
-
-## License
-
-This project is privately licensed and not for distribution.

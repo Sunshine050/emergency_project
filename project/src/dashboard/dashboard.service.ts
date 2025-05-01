@@ -1,73 +1,155 @@
-import { Injectable } from "@nestjs/common";
-import { PrismaService } from "../prisma/prisma.service";
-import { EmergencyStatus } from "../sos/dto/sos.dto";
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { EmergencyStatus } from '../sos/dto/sos.dto';
+import { DashboardStatsResponseDto, EmergencyCaseDto } from './dto/dashboard.dto';
+import { NotificationGateway } from '../notification/notification.gateway';
+
+interface MedicalInfo {
+  totalBeds?: number;
+  occupiedBeds?: number;
+}
+
+interface Location {
+  address: string;
+  coordinates: {
+    lat: number;
+    lng: number;
+  };
+}
 
 @Injectable()
 export class DashboardService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(DashboardService.name);
 
-  async getStats() {
+  constructor(
+    private prisma: PrismaService,
+    private notificationGateway: NotificationGateway,
+  ) {}
+
+  private parseLocation(location: unknown): Location {
+    if (location && typeof location === 'object' && 'address' in location && 'coordinates' in location) {
+      const loc = location as any;
+      if (
+        typeof loc.address === 'string' &&
+        typeof loc.coordinates === 'object' &&
+        'lat' in loc.coordinates &&
+        'lng' in loc.coordinates &&
+        typeof loc.coordinates.lat === 'number' &&
+        typeof loc.coordinates.lng === 'number'
+      ) {
+        return {
+          address: loc.address,
+          coordinates: {
+            lat: loc.coordinates.lat,
+            lng: loc.coordinates.lng,
+          },
+        };
+      }
+    }
+    return {
+      address: 'Unknown',
+      coordinates: { lat: 0, lng: 0 },
+    };
+  }
+
+  private parseMedicalInfo(medicalInfo: unknown): MedicalInfo {
+    if (medicalInfo && typeof medicalInfo === 'object') {
+      const info = medicalInfo as any;
+      return {
+        totalBeds: typeof info.totalBeds === 'number' ? info.totalBeds : 0,
+        occupiedBeds: typeof info.occupiedBeds === 'number' ? info.occupiedBeds : 0,
+      };
+    }
+    return {
+      totalBeds: 0,
+      occupiedBeds: 0,
+    };
+  }
+
+  async getStats(): Promise<DashboardStatsResponseDto> {
     const [
       totalEmergencies,
       activeEmergencies,
       completedEmergencies,
+      cancelledEmergencies,
+      responseTimes,
       activeTeams,
       hospitals,
+      criticalCases,
     ] = await Promise.all([
-      // Total emergencies
       this.prisma.emergencyRequest.count(),
-      // Active emergencies
       this.prisma.emergencyRequest.count({
         where: {
           status: {
-            in: [
-              EmergencyStatus.PENDING,
-              EmergencyStatus.ASSIGNED,
-              EmergencyStatus.IN_PROGRESS,
-            ],
+            in: [EmergencyStatus.PENDING, EmergencyStatus.ASSIGNED, EmergencyStatus.IN_PROGRESS],
           },
         },
       }),
-      // Completed emergencies
       this.prisma.emergencyRequest.count({
-        where: {
-          status: EmergencyStatus.COMPLETED,
+        where: { status: EmergencyStatus.COMPLETED },
+      }),
+      this.prisma.emergencyRequest.count({
+        where: { status: EmergencyStatus.CANCELLED },
+      }),
+      this.prisma.emergencyRequest.findMany({
+        where: { status: EmergencyStatus.COMPLETED },
+        select: {
+          createdAt: true,
+          updatedAt: true,
         },
       }),
-      // Active rescue teams
       this.prisma.organization.count({
         where: {
-          type: "RESCUE_TEAM",
-          status: "ACTIVE",
+          type: 'RESCUE_TEAM',
+          status: 'ACTIVE',
         },
       }),
-      // Active hospitals
       this.prisma.organization.count({
         where: {
-          type: "HOSPITAL",
-          status: "ACTIVE",
+          type: 'HOSPITAL',
+          status: 'ACTIVE',
         },
+      }),
+      this.prisma.emergencyRequest.count({
+        where: { severity: 4 },
       }),
     ]);
+
+    const totalResponseTime = responseTimes.reduce((sum, req) => {
+      const created = new Date(req.createdAt).getTime();
+      const updated = new Date(req.updatedAt).getTime();
+      const diffInMinutes = (updated - created) / (1000 * 60);
+      return sum + diffInMinutes;
+    }, 0);
+    const averageResponseTime = responseTimes.length ? totalResponseTime / responseTimes.length : 0;
+
+    const hospitalDetails = await this.prisma.organization.findMany({
+      where: { type: 'HOSPITAL', status: 'ACTIVE' },
+      select: { medicalInfo: true },
+    });
+    const availableHospitalBeds = hospitalDetails.reduce((sum, hospital) => {
+      const medicalInfo = this.parseMedicalInfo(hospital.medicalInfo);
+      return sum + (medicalInfo.totalBeds - medicalInfo.occupiedBeds);
+    }, 0);
 
     return {
       totalEmergencies,
       activeEmergencies,
       completedEmergencies,
+      cancelledEmergencies,
+      averageResponseTime: Math.round(averageResponseTime),
       activeTeams,
-      hospitals,
+      availableHospitalBeds,
+      connectedHospitals: hospitals,
+      criticalCases,
     };
   }
 
-  async getActiveEmergencies() {
-    return this.prisma.emergencyRequest.findMany({
+  async getActiveEmergencies(): Promise<EmergencyCaseDto[]> {
+    const emergencies = await this.prisma.emergencyRequest.findMany({
       where: {
         status: {
-          in: [
-            EmergencyStatus.PENDING,
-            EmergencyStatus.ASSIGNED,
-            EmergencyStatus.IN_PROGRESS,
-          ],
+          in: [EmergencyStatus.PENDING, EmergencyStatus.ASSIGNED, EmergencyStatus.IN_PROGRESS],
         },
       },
       include: {
@@ -86,39 +168,250 @@ export class DashboardService {
         },
       },
       orderBy: {
-        createdAt: "desc",
+        createdAt: 'desc',
       },
     });
+
+    return emergencies.map((emergency) => ({
+      id: emergency.id,
+      title: emergency.title || `Emergency ${emergency.id}`,
+      status: emergency.status,
+      severity: emergency.severity || 1,
+      reportedAt: emergency.createdAt?.toISOString() ?? new Date().toISOString(),
+      patientName: `${emergency.patient?.firstName || ''} ${emergency.patient?.lastName || ''}`.trim() || 'Unknown',
+      contactNumber: emergency.patient?.phone || 'N/A',
+      emergencyType: emergency.emergencyType || 'Unknown',
+      location: this.parseLocation(emergency.location),
+      assignedTo: emergency.responses?.[0]?.organization?.name || undefined,
+      description: emergency.description || 'No description provided',
+      symptoms: emergency.symptoms || [],
+    }));
   }
 
   async getTeamLocations() {
-    return this.prisma.organization.findMany({
+    const teams = await this.prisma.organization.findMany({
       where: {
-        type: "RESCUE_TEAM",
-        status: "ACTIVE",
+        type: 'RESCUE_TEAM',
+        status: 'ACTIVE',
       },
       select: {
         id: true,
         name: true,
         latitude: true,
         longitude: true,
+        location: true,
         status: true,
         medicalInfo: true,
       },
     });
+
+    return teams.map((team) => ({
+      id: team.id,
+      name: team.name,
+      type: 'RESCUE_TEAM',
+      location: team.location
+        ? this.parseLocation(team.location)
+        : {
+            address: 'Unknown',
+            coordinates: {
+              lat: team.latitude || 0,
+              lng: team.longitude || 0,
+            },
+          },
+      status: team.status || 'AVAILABLE',
+    }));
   }
 
   async getHospitalCapacities() {
-    return this.prisma.organization.findMany({
+    const hospitals = await this.prisma.organization.findMany({
       where: {
-        type: "HOSPITAL",
-        status: "ACTIVE",
+        type: 'HOSPITAL',
+        status: 'ACTIVE',
       },
       select: {
         id: true,
         name: true,
         medicalInfo: true,
+        latitude: true,
+        longitude: true,
+        location: true,
       },
     });
+
+    return hospitals.map((hospital) => {
+      const medicalInfo = this.parseMedicalInfo(hospital.medicalInfo);
+      return {
+        id: hospital.id,
+        name: hospital.name,
+        type: 'HOSPITAL',
+        capacity: medicalInfo.totalBeds,
+        availableBeds: medicalInfo.totalBeds - medicalInfo.occupiedBeds,
+        location: hospital.location
+          ? this.parseLocation(hospital.location)
+          : {
+              address: 'Unknown',
+              coordinates: {
+                lat: hospital.latitude || 0,
+                lng: hospital.longitude || 0,
+              },
+            },
+      };
+    });
+  }
+
+  async assignCase(caseId: string, assignedToId: string): Promise<EmergencyCaseDto> {
+    const emergency = await this.prisma.emergencyRequest.findUnique({
+      where: { id: caseId },
+      include: { responses: true },
+    });
+
+    if (!emergency) {
+      throw new NotFoundException(`Emergency case with ID ${caseId} not found`);
+    }
+
+    const organization = await this.prisma.organization.findUnique({
+      where: { id: assignedToId },
+      include: { users: true },
+    });
+
+    if (!organization || !['HOSPITAL', 'RESCUE_TEAM'].includes(organization.type)) {
+      throw new NotFoundException(`Organization with ID ${assignedToId} not found or invalid type`);
+    }
+
+    const updatedEmergency = await this.prisma.emergencyRequest.update({
+      where: { id: caseId },
+      data: {
+        status: EmergencyStatus.ASSIGNED,
+        responses: {
+          create: {
+            organizationId: assignedToId,
+            status: 'ASSIGNED',
+            assignedAt: new Date(),
+          },
+        },
+        notifications: {
+          create: {
+            userId: organization.users?.[0]?.id || '',
+            type: 'CASE_ASSIGNED',
+            title: `New Case Assigned: ${emergency.title || emergency.id}`,
+            body: `You have been assigned to handle emergency case ${emergency.id}.`,
+            metadata: { caseId: emergency.id },
+          },
+        },
+      },
+      include: {
+        patient: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+          },
+        },
+        responses: {
+          include: {
+            organization: true,
+          },
+        },
+      },
+    });
+
+    const payload = {
+      emergencyId: updatedEmergency.id,
+      status: updatedEmergency.status,
+      assignedTo: assignedToId, // เพิ่ม assignedTo เพื่อให้ frontend กรองได้
+    };
+    this.logger.log(`Assign case ${caseId} to ${assignedToId}, broadcasting status update: ${JSON.stringify(payload)}`);
+    this.notificationGateway.broadcastStatusUpdate(payload);
+
+    return {
+      id: updatedEmergency.id,
+      title: updatedEmergency.title || `Emergency ${updatedEmergency.id}`,
+      status: updatedEmergency.status,
+      severity: updatedEmergency.severity || 1,
+      reportedAt: updatedEmergency.createdAt?.toISOString() ?? new Date().toISOString(),
+      patientName: `${updatedEmergency.patient?.firstName || ''} ${updatedEmergency.patient?.lastName || ''}`.trim() || 'Unknown',
+      contactNumber: updatedEmergency.patient?.phone || 'N/A',
+      emergencyType: updatedEmergency.emergencyType || 'Unknown',
+      location: this.parseLocation(updatedEmergency.location),
+      assignedTo: updatedEmergency.responses?.[0]?.organization?.name || undefined,
+      description: updatedEmergency.description || 'No description provided',
+      symptoms: updatedEmergency.symptoms || [],
+    };
+  }
+
+  async cancelCase(caseId: string): Promise<EmergencyCaseDto> {
+    const emergency = await this.prisma.emergencyRequest.findUnique({
+      where: { id: caseId },
+      include: {
+        responses: {
+          include: {
+            organization: {
+              include: {
+                users: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!emergency) {
+      throw new NotFoundException(`Emergency case with ID ${caseId} not found`);
+    }
+
+    const updatedEmergency = await this.prisma.emergencyRequest.update({
+      where: { id: caseId },
+      data: {
+        status: EmergencyStatus.CANCELLED,
+        notifications: {
+          create: emergency.responses.map((response) => ({
+            userId: response.organization?.users?.[0]?.id || '',
+            type: 'CASE_CANCELLED',
+            title: `Case Cancelled: ${emergency.title || emergency.id}`,
+            body: `Emergency case ${emergency.id} has been cancelled.`,
+            metadata: { caseId: emergency.id },
+          })),
+        },
+      },
+      include: {
+        patient: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+          },
+        },
+        responses: {
+          include: {
+            organization: true,
+          },
+        },
+      },
+    });
+
+    const payload = {
+      emergencyId: updatedEmergency.id,
+      status: updatedEmergency.status,
+      assignedTo: emergency.responses?.[0]?.organizationId || undefined, // เพิ่ม assignedTo
+    };
+    this.logger.log(`Cancel case ${caseId}, broadcasting status update: ${JSON.stringify(payload)}`);
+    this.notificationGateway.broadcastStatusUpdate(payload);
+
+    return {
+      id: updatedEmergency.id,
+      title: updatedEmergency.title || `Emergency ${updatedEmergency.id}`,
+      status: updatedEmergency.status,
+      severity: updatedEmergency.severity || 1,
+      reportedAt: updatedEmergency.createdAt?.toISOString() ?? new Date().toISOString(),
+      patientName: `${updatedEmergency.patient?.firstName || ''} ${updatedEmergency.patient?.lastName || ''}`.trim() || 'Unknown',
+      contactNumber: updatedEmergency.patient?.phone || 'N/A',
+      emergencyType: updatedEmergency.emergencyType || 'Unknown',
+      location: this.parseLocation(updatedEmergency.location),
+      assignedTo: updatedEmergency.responses?.[0]?.organization?.name || undefined,
+      description: updatedEmergency.description || 'No description provided',
+      symptoms: updatedEmergency.symptoms || [],
+    };
   }
 }

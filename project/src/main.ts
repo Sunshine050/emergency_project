@@ -7,7 +7,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { RedocModule, RedocOptions } from 'nestjs-redoc';
 
 async function bootstrap() {
-  const app: INestApplication = await NestFactory.create(AppModule); // ระบุ type ชัดเจน
+  const app: INestApplication = await NestFactory.create(AppModule);
   app.useLogger(['log', 'error', 'warn', 'debug', 'verbose']);
   const configService = app.get(ConfigService);
 
@@ -20,8 +20,12 @@ async function bootstrap() {
     }),
   );
 
-  // Enable CORS
-  app.enableCors();
+  // Enable CORS with specific origin
+  app.enableCors({
+    origin: process.env.CLIENT_URL || 'http://localhost:3000',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+  });
 
   // ตั้งค่า Swagger
   const config = new DocumentBuilder()
@@ -45,14 +49,14 @@ async function bootstrap() {
   };
   await RedocModule.setup('docs', app, document, redocOptions);
 
-  // Get port from environment variables
-  const port = configService.get('PORT') || 3000;
-
-  // เรียก listen ก่อน
-  await app.listen(port);
-
-  // ตั้งค่า WebSocket adapter หลัง listen
+  // ตั้งค่า WebSocket adapter ก่อน listen
   app.useWebSocketAdapter(new IoAdapter(app));
+
+  // Get port from environment variables
+  const port = configService.get('PORT') || 3001;
+
+  // listen server หลังตั้ง WebSocket adapter แล้ว
+  await app.listen(port);
 
   console.log(`Application is running on: http://localhost:${port}`);
   console.log(`Swagger UI is available at: http://localhost:${port}/api`);

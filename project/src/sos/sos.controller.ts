@@ -1,59 +1,94 @@
-import { Controller, Post, Get, Put, Param, Body, UseGuards } from "@nestjs/common";
-import { SosService } from "./sos.service";
-import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
-import { RolesGuard } from "../auth/guards/roles.guard";
-import { Roles } from "../auth/decorators/roles.decorator";
-import { CurrentUser } from "../auth/decorators/current-user.decorator";
-import { UserRole } from "@prisma/client";
+import { Controller, Post, Get, Put, Param, Body, UseGuards } from '@nestjs/common';
+import { SosService } from './sos.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { UserRole } from '@prisma/client';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import {
   CreateEmergencyRequestDto,
   UpdateEmergencyStatusDto,
-} from "./dto/sos.dto";
+  EmergencyResponseDto,
+} from './dto/sos.dto';
+import { NotificationGateway } from '../notification/notification.gateway';
 
-@Controller("sos")
+@ApiTags('SOS')
+@Controller('sos')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class SosController {
-  constructor(private readonly sosService: SosService) {}
+  constructor(
+    private readonly sosService: SosService,
+    private readonly notificationGateway: NotificationGateway,
+  ) {}
 
   @Post()
   @Roles(UserRole.PATIENT)
-  createEmergencyRequest(
+  @ApiOperation({ summary: 'Create a new emergency request' })
+  @ApiResponse({ status: 201, description: 'Emergency request created', type: EmergencyResponseDto })
+  async createEmergencyRequest(
     @Body() createSosDto: CreateEmergencyRequestDto,
     @CurrentUser() user: any,
-  ) {
-    console.log('createEmergencyRequest called');
-    return this.sosService.createEmergencyRequest(createSosDto, user.id);
+  ): Promise<EmergencyResponseDto> {
+    const newEmergency = await this.sosService.createEmergencyRequest(createSosDto, user.id);
+    // ส่ง WebSocket event สำหรับ emergency ใหม่
+    this.notificationGateway.broadcastEmergency({
+      id: newEmergency.id,
+      type: newEmergency.emergencyType,
+      grade: newEmergency.severity === 4 ? 'CRITICAL' : newEmergency.severity === 3 ? 'URGENT' : 'NORMAL',
+      location: {
+        address: newEmergency.location.address,
+      },
+      coordinates: {
+        latitude: newEmergency.location.coordinates.lat,
+        longitude: newEmergency.location.coordinates.lng,
+      },
+    });
+    return newEmergency;
   }
 
-  @Put(":id/status")
+  @Put(':id/status')
   @Roles(UserRole.EMERGENCY_CENTER, UserRole.HOSPITAL, UserRole.RESCUE_TEAM)
-  updateStatus(
-    @Param("id") id: string,
+  @ApiOperation({ summary: 'Update the status of an emergency request' })
+  @ApiResponse({ status: 200, description: 'Status updated', type: EmergencyResponseDto })
+  async updateStatus(
+    @Param('id') id: string,
     @Body() updateStatusDto: UpdateEmergencyStatusDto,
-  ) {
-    console.log('updateStatus called with id:', id);
-    return this.sosService.updateStatus(id, updateStatusDto);
+  ): Promise<EmergencyResponseDto> {
+    const updatedEmergency = await this.sosService.updateStatus(id, updateStatusDto);
+    // ส่ง WebSocket event สำหรับการอัปเดตสถานะ
+    this.notificationGateway.broadcastStatusUpdate({
+      emergencyId: id,
+      status: updatedEmergency.status,
+      assignedTo: updatedEmergency.assignedTo,
+    });
+    return updatedEmergency;
   }
 
   @Get()
   @Roles(UserRole.PATIENT)
-  async getEmergencyRequests(@CurrentUser() user: any) {
-    console.log('getEmergencyRequests called for user:', user.id);
+  @ApiOperation({ summary: 'Get all emergency requests for a patient' })
+  @ApiResponse({ status: 200, description: 'Emergency requests retrieved', type: [EmergencyResponseDto] })
+  async getEmergencyRequests(@CurrentUser() user: any): Promise<EmergencyResponseDto[]> {
     return this.sosService.getEmergencyRequests(user.id);
   }
 
   @Get('all')
   @Roles(UserRole.EMERGENCY_CENTER, UserRole.HOSPITAL, UserRole.RESCUE_TEAM)
-  async getAllEmergencyRequests() {
-    console.log('getAllEmergencyRequests called');
-    console.log('Expected roles:', [UserRole.EMERGENCY_CENTER, UserRole.HOSPITAL, UserRole.RESCUE_TEAM]);
+  @ApiOperation({ summary: 'Get all emergency requests (for responders)' })
+  @ApiResponse({ status: 200, description: 'Emergency requests retrieved', type: [EmergencyResponseDto] })
+  async getAllEmergencyRequests(): Promise<EmergencyResponseDto[]> {
     return this.sosService.getAllEmergencyRequests();
   }
 
   @Get(':id')
   @Roles(UserRole.PATIENT)
-  async getEmergencyRequestById(@Param('id') id: string, @CurrentUser() user: any) {
-    console.log('getEmergencyRequestById called with id:', id);
+  @ApiOperation({ summary: 'Get a specific emergency request by ID' })
+  @ApiResponse({ status: 200, description: 'Emergency request retrieved', type: EmergencyResponseDto })
+  async getEmergencyRequestById(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+  ): Promise<EmergencyResponseDto> {
     return this.sosService.getEmergencyRequestById(id, user.id);
   }
 }
