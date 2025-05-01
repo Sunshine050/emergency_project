@@ -1,19 +1,18 @@
 import {
   WebSocketGateway,
   WebSocketServer,
+  OnGatewayInit,
   OnGatewayConnection,
   OnGatewayDisconnect,
-  OnGatewayInit,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Logger } from '@nestjs/common';
+import { Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AuthService } from '../auth/auth.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 interface TokenPayload {
-  id?: string;
-  sub: string;
+  sub: string; // User ID from JWT
   email: string;
   role: string;
   iat?: number;
@@ -30,7 +29,7 @@ interface TokenPayload {
 })
 export class NotificationGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
-  private logger = new Logger('NotificationGateway');
+  private logger = new Logger(NotificationGateway.name);
   private userSocketMap: Map<string, Set<string>> = new Map();
 
   constructor(
@@ -40,7 +39,7 @@ export class NotificationGateway implements OnGatewayInit, OnGatewayConnection, 
   ) {}
 
   afterInit(server: Server) {
-    this.logger.log('Notification WebSocket Gateway initialized');
+    this.logger.log('Notification WebSocket Gateway initialized on namespace /notifications');
   }
 
   async handleConnection(client: Socket) {
@@ -48,48 +47,52 @@ export class NotificationGateway implements OnGatewayInit, OnGatewayConnection, 
       const token = this.extractToken(client);
       if (!token) {
         this.logger.warn(`Missing token from client ${client.id}`);
-        this.disconnect(client);
+        this.disconnect(client, 'Missing token');
         return;
       }
 
-      const user = await this.validateToken(token);
-      this.logger.log(`Decoded user: ${JSON.stringify(user)}`);
-
-      if (!user) {
-        this.logger.warn(`Invalid token for client ${client.id}`);
-        this.disconnect(client);
+      const payload = await this.validateToken(token);
+      if (!payload) {
+        this.logger.warn(`Invalid or expired token for client ${client.id}`);
+        this.disconnect(client, 'Invalid or expired token');
         return;
       }
 
-      const userId = user.id || user.sub;
+      const userId = payload.sub; // ใช้ sub เป็น user ID โดยตรง
       this.storeUserSocket(userId, client.id);
       client.join(`user:${userId}`);
 
-      if (user.role) {
-        client.join(`role:${user.role}`);
+      if (payload.role) {
+        client.join(`role:${payload.role}`);
+        this.logger.log(`Client ${client.id} joined role:${payload.role}`);
       }
 
-      this.logger.log(`Client connected: ${client.id} for user ${userId}`);
+      this.logger.log(`Client ${client.id} connected for user ${userId}`);
     } catch (error) {
-      this.logger.error(`Connection error: ${error.message}`);
-      this.disconnect(client);
+      this.logger.error(`Connection error for client ${client.id}: ${error.message}`, error.stack);
+      this.disconnect(client, 'Authentication failed');
     }
   }
 
   handleDisconnect(client: Socket) {
-    this.removeUserSocket(client.id);
-    this.logger.log(`Client disconnected: ${client.id}`);
+    const socketId = client.id;
+    this.removeUserSocket(socketId);
+    this.logger.log(`Client disconnected: ${socketId}`);
   }
 
   private extractToken(client: Socket): string | null {
-    const auth = client.handshake.auth.token || client.handshake.headers.authorization;
+    const auth = client.handshake.auth?.token || client.handshake.headers?.authorization;
     if (!auth) return null;
-    return auth.replace('Bearer ', '');
+    return auth.replace('Bearer ', '').trim() || null;
   }
 
   private async validateToken(token: string): Promise<TokenPayload | null> {
     try {
       const payload = await this.authService.validateToken(token);
+      if (!payload || !payload.sub || !payload.role) {
+        this.logger.warn(`Invalid payload structure: ${JSON.stringify(payload)}`);
+        return null;
+      }
       return payload as TokenPayload;
     } catch (err) {
       this.logger.warn(`Token validation failed: ${err.message}`);
@@ -101,7 +104,7 @@ export class NotificationGateway implements OnGatewayInit, OnGatewayConnection, 
     if (!this.userSocketMap.has(userId)) {
       this.userSocketMap.set(userId, new Set());
     }
-    this.userSocketMap.get(userId).add(socketId);
+    this.userSocketMap.get(userId)?.add(socketId);
   }
 
   private removeUserSocket(socketId: string) {
@@ -116,8 +119,10 @@ export class NotificationGateway implements OnGatewayInit, OnGatewayConnection, 
     }
   }
 
-  private disconnect(client: Socket) {
+  private disconnect(client: Socket, reason: string) {
+    client.emit('error', { message: reason });
     client.disconnect(true);
+    this.logger.log(`Client ${client.id} disconnected due to: ${reason}`);
   }
 
   sendToUser(userId: string, event: string, data: any) {
@@ -137,7 +142,7 @@ export class NotificationGateway implements OnGatewayInit, OnGatewayConnection, 
       grade: data.grade,
       location: data.location,
       coordinates: data.coordinates,
-      assignedTo: data.assignedTo, // เพิ่ม assignedTo เพื่อให้ frontend กรองได้
+      assignedTo: data.assignedTo,
     };
     this.logger.log(`Broadcasting emergency event: ${JSON.stringify(payload)}`);
     this.server
@@ -154,14 +159,12 @@ export class NotificationGateway implements OnGatewayInit, OnGatewayConnection, 
       assignedTo: data.assignedTo,
     };
     this.logger.log(`Broadcasting status-update event: ${JSON.stringify(payload)}`);
-    // ส่งไปยัง role ที่เกี่ยวข้องเท่านั้น
     this.server
       .to('role:EMERGENCY_CENTER')
       .to('role:HOSPITAL')
       .to('role:RESCUE_TEAM')
       .emit('status-update', payload);
 
-    // ถ้ามี assignedTo, ส่งไปยัง user ที่เป็น assignedTo ด้วย
     if (data.assignedTo) {
       this.sendToUser(data.assignedTo, 'status-update', payload);
     }

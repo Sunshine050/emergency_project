@@ -5,20 +5,20 @@ import {
   Logger,
   BadRequestException,
   ConflictException,
-} from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import { JwtService } from "@nestjs/jwt";
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import { PrismaService } from "../prisma/prisma.service";
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { PrismaService } from '../prisma/prisma.service';
 import {
   SupabaseUser,
   TokenPayload,
   AuthTokens,
-} from "../common/interfaces/auth.interface";
-import { UserRole, UserStatus } from "@prisma/client";
-import * as bcrypt from "bcrypt";
-import { RegisterDto, LoginDto } from "./dto/auth.dto";
-import { config } from "dotenv";
+} from '../common/interfaces/auth.interface';
+import { UserRole, UserStatus } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
+import { RegisterDto, LoginDto } from './dto/auth.dto';
+import { config } from 'dotenv';
 config();
 
 // ฟังก์ชันช่วยกรองข้อมูลที่อ่อนไหวก่อนล็อก
@@ -37,30 +37,38 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
   ) {
-    const supabaseUrl = this.configService.get<string>("SUPABASE_URL");
-    const supabaseServiceRoleKey = this.configService.get<string>("SUPABASE_SERVICE_ROLE_KEY");
+    // ตรวจสอบ environment variables
+    const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
+    const supabaseServiceRoleKey = this.configService.get<string>('SUPABASE_SERVICE_ROLE_KEY');
+    const jwtSecret = this.configService.get<string>('JWT_SECRET');
+    const jwtRefreshSecret = this.configService.get<string>('JWT_REFRESH_SECRET');
 
     if (!supabaseUrl || !supabaseServiceRoleKey) {
-      this.logger.error("Supabase configuration missing: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set");
-      throw new InternalServerErrorException("Supabase configuration is incomplete");
+      this.logger.error('Supabase configuration missing: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set');
+      throw new InternalServerErrorException('Supabase configuration is incomplete');
+    }
+
+    if (!jwtSecret || !jwtRefreshSecret) {
+      this.logger.error('JWT configuration missing: JWT_SECRET or JWT_REFRESH_SECRET not set');
+      throw new InternalServerErrorException('JWT configuration is incomplete');
     }
 
     this.supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
-    this.logger.log("Supabase client initialized successfully");
+    this.logger.log('Supabase client initialized successfully');
   }
 
   /**
    * Test Supabase connection
    */
   async testSupabaseConnection() {
-    this.logger.log("Testing Supabase connection");
+    this.logger.log('Testing Supabase connection');
     try {
       const { data, error } = await this.supabase.from('users').select('*').limit(1);
       if (error) {
         this.logger.error(`Supabase connection test failed: ${error.message}`);
         throw new InternalServerErrorException(`Supabase connection test failed: ${error.message}`);
       }
-      this.logger.log("Supabase connection test successful", { data });
+      this.logger.log('Supabase connection test successful', { data: sanitizeLogData(data) });
       return { data, error: null };
     } catch (error) {
       this.logger.error(`Error testing Supabase connection: ${error.message}`, error.stack);
@@ -85,7 +93,7 @@ export class AuthService {
     ];
     if (role && !allowedRoles.includes(role)) {
       this.logger.warn(`Role not allowed: ${role}`);
-      throw new BadRequestException("This role cannot be registered this way");
+      throw new BadRequestException('This role cannot be registered this way');
     }
 
     try {
@@ -96,7 +104,7 @@ export class AuthService {
 
       if (existingUser) {
         this.logger.warn(`Email already exists: ${email}`);
-        throw new ConflictException("This email is already in use");
+        throw new ConflictException('This email is already in use');
       }
 
       // Hash password
@@ -149,42 +157,44 @@ export class AuthService {
 
       if (!user || !user.password) {
         this.logger.warn(`User not found or no password set: ${email}`);
-        throw new UnauthorizedException("Invalid email or password");
+        throw new UnauthorizedException('Invalid email or password');
       }
 
       // Verify password
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
         this.logger.warn(`Invalid password for: ${email}`);
-        throw new UnauthorizedException("Invalid email or password");
+        throw new UnauthorizedException('Invalid email or password');
       }
 
       if (user.status !== UserStatus.ACTIVE) {
         this.logger.warn(`User is not active: ${email}`);
-        throw new UnauthorizedException("This account is disabled");
+        throw new UnauthorizedException('This account is disabled');
       }
 
-      // Generate JWT token
+      // Generate JWT tokens
       const payload: TokenPayload = {
         sub: user.id,
         email: user.email,
         role: user.role.toString(),
       };
 
-      const accessToken = this.jwtService.sign(payload);
+      const accessToken = this.jwtService.sign(payload, {
+        secret: this.configService.get<string>('JWT_SECRET'),
+        expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '15m'),
+      });
 
-      // Generate refresh token using JWT
       const refreshToken = this.jwtService.sign(payload, {
-        secret: this.configService.get<string>("JWT_REFRESH_SECRET"),
-        expiresIn: this.configService.get<string>("JWT_REFRESH_EXPIRES_IN", "30d"),
+        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+        expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d'),
       });
 
       this.logger.log(`Login successful for user: ${user.id}, role: ${user.role}`);
       return {
         access_token: accessToken,
         refresh_token: refreshToken,
-        token_type: "Bearer",
-        expires_in: parseInt(this.configService.get("JWT_EXPIRES_IN", "604800")),
+        token_type: 'Bearer',
+        expires_in: parseInt(this.configService.get('JWT_EXPIRES_IN', '900')), // 15 minutes in seconds
       };
     } catch (error) {
       this.logger.error(`Error during login: ${error.message}`, error.stack);
@@ -198,7 +208,7 @@ export class AuthService {
    * Generates an authorization URL for the specified OAuth provider
    */
   async generateAuthUrl(provider: string): Promise<string> {
-    const validProviders = ["google", "facebook", "apple"];
+    const validProviders = ['google', 'facebook', 'apple'];
 
     this.logger.log(`Generating auth URL for provider: ${provider}`);
 
@@ -208,10 +218,10 @@ export class AuthService {
     }
 
     try {
-      const redirectUrl = this.configService.get<string>("OAUTH_REDIRECT_URL");
+      const redirectUrl = this.configService.get<string>('OAUTH_REDIRECT_URL');
       if (!redirectUrl) {
-        this.logger.error("OAUTH_REDIRECT_URL not configured");
-        throw new InternalServerErrorException("OAuth redirect URL not configured");
+        this.logger.error('OAUTH_REDIRECT_URL not configured');
+        throw new InternalServerErrorException('OAuth redirect URL not configured');
       }
       this.logger.log(`Redirect URL: ${redirectUrl}`);
 
@@ -220,8 +230,8 @@ export class AuthService {
         options: {
           redirectTo: redirectUrl,
           queryParams: {
-            response_type: "code",
-            access_type: "offline",
+            response_type: 'code',
+            access_type: 'offline',
           },
         },
       });
@@ -261,8 +271,8 @@ export class AuthService {
       const supabaseUser = data.user as SupabaseUser;
 
       if (!supabaseUser || !supabaseUser.id) {
-        this.logger.error("Invalid user data received from provider");
-        throw new UnauthorizedException("Invalid user data received from provider");
+        this.logger.error('Invalid user data received from provider');
+        throw new UnauthorizedException('Invalid user data received from provider');
       }
 
       const user = await this.findOrCreateUser(supabaseUser, provider);
@@ -273,15 +283,22 @@ export class AuthService {
         role: user.role.toString(),
       };
 
-      const accessToken = this.jwtService.sign(payload);
+      const accessToken = this.jwtService.sign(payload, {
+        secret: this.configService.get<string>('JWT_SECRET'),
+        expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '15m'),
+      });
+
+      const refreshToken = this.jwtService.sign(payload, {
+        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+        expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d'),
+      });
 
       this.logger.log(`Generated access token for user: ${user.id}, email: ${user.email}, role: ${user.role}`);
-
       return {
         access_token: accessToken,
-        refresh_token: data.session.refresh_token,
-        token_type: "Bearer",
-        expires_in: parseInt(this.configService.get("JWT_EXPIRES_IN", "604800")),
+        refresh_token: refreshToken,
+        token_type: 'Bearer',
+        expires_in: parseInt(this.configService.get('JWT_EXPIRES_IN', '900')), // 15 minutes in seconds
       };
     } catch (error) {
       this.logger.error(`Error handling OAuth callback: ${error.message}`, error.stack);
@@ -299,7 +316,7 @@ export class AuthService {
     this.logger.log(`Finding or creating user from provider: ${provider}, email: ${supabaseUser.email}`);
 
     if (!supabaseUser?.id || !supabaseUser?.email) {
-      this.logger.error('Supabase user data incomplete', supabaseUser);
+      this.logger.error('Supabase user data incomplete', sanitizeLogData(supabaseUser));
       throw new BadRequestException('Invalid Supabase user data: missing id or email');
     }
 
@@ -313,17 +330,17 @@ export class AuthService {
 
         const { user_metadata } = supabaseUser;
 
-        let firstName = "";
-        let lastName = "";
+        let firstName = '';
+        let lastName = '';
 
         if (user_metadata?.full_name) {
-          const nameParts = user_metadata.full_name.split(" ");
-          firstName = nameParts[0] || "";
-          lastName = nameParts.slice(1).join(" ") || "";
+          const nameParts = user_metadata.full_name.split(' ');
+          firstName = nameParts[0] || '';
+          lastName = nameParts.slice(1).join(' ') || '';
         } else if (user_metadata?.name) {
-          const nameParts = user_metadata.name.split(" ");
-          firstName = nameParts[0] || "";
-          lastName = nameParts.slice(1).join(" ") || "";
+          const nameParts = user_metadata.name.split(' ');
+          firstName = nameParts[0] || '';
+          lastName = nameParts.slice(1).join(' ') || '';
         }
 
         user = await this.prisma.user.create({
@@ -352,18 +369,20 @@ export class AuthService {
    * Validates a JWT token
    */
   async validateToken(token: string): Promise<TokenPayload> {
-    this.logger.log(`Validating token for a user`);
+    this.logger.log(`Validating token`);
 
     try {
-      const payload = this.jwtService.verify<TokenPayload>(token);
+      const payload = this.jwtService.verify<TokenPayload>(token, {
+        secret: this.configService.get<string>('JWT_SECRET'),
+      });
 
       const user = await this.prisma.user.findUnique({
         where: { id: payload.sub },
       });
 
       if (!user || user.status !== UserStatus.ACTIVE) {
-        this.logger.error("User not found or inactive");
-        throw new UnauthorizedException("User not found or inactive");
+        this.logger.error('User not found or inactive');
+        throw new UnauthorizedException('User not found or inactive');
       }
 
       this.logger.log(`Token validation successful for user: ${payload.sub}, email: ${payload.email}`);
@@ -378,14 +397,14 @@ export class AuthService {
    * Refreshes an access token using a refresh token
    */
   async refreshToken(refreshToken: string): Promise<AuthTokens> {
-    this.logger.log(`Refreshing token for a user`);
+    this.logger.log(`Refreshing token`);
 
     try {
       // Check if it's a refresh token from OAuth (Supabase) or regular login
       try {
         // Try to verify as JWT refresh token
         const payload = this.jwtService.verify<TokenPayload>(refreshToken, {
-          secret: this.configService.get<string>("JWT_REFRESH_SECRET"),
+          secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
         });
 
         // Find user
@@ -394,8 +413,8 @@ export class AuthService {
         });
 
         if (!user || user.status !== UserStatus.ACTIVE) {
-          this.logger.error("User not found or inactive");
-          throw new UnauthorizedException("User not found or inactive");
+          this.logger.error('User not found or inactive');
+          throw new UnauthorizedException('User not found or inactive');
         }
 
         // Generate new access token
@@ -405,18 +424,22 @@ export class AuthService {
           role: user.role.toString(),
         };
 
-        const newAccessToken = this.jwtService.sign(newPayload);
+        const newAccessToken = this.jwtService.sign(newPayload, {
+          secret: this.configService.get<string>('JWT_SECRET'),
+          expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '15m'),
+        });
+
         const newRefreshToken = this.jwtService.sign(newPayload, {
-          secret: this.configService.get<string>("JWT_REFRESH_SECRET"),
-          expiresIn: this.configService.get<string>("JWT_REFRESH_EXPIRES_IN", "30d"),
+          secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+          expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d'),
         });
 
         this.logger.log(`Generated new access token for user: ${user.id}, email: ${user.email}, role: ${user.role}`);
         return {
           access_token: newAccessToken,
           refresh_token: newRefreshToken,
-          token_type: "Bearer",
-          expires_in: parseInt(this.configService.get("JWT_EXPIRES_IN", "604800")),
+          token_type: 'Bearer',
+          expires_in: parseInt(this.configService.get('JWT_EXPIRES_IN', '900')), // 15 minutes in seconds
         };
       } catch (jwtError) {
         // If not a JWT refresh token, try Supabase (for OAuth)
@@ -434,8 +457,8 @@ export class AuthService {
         });
 
         if (!user || user.status !== UserStatus.ACTIVE) {
-          this.logger.error("User not found or inactive");
-          throw new UnauthorizedException("User not found or inactive");
+          this.logger.error('User not found or inactive');
+          throw new UnauthorizedException('User not found or inactive');
         }
 
         const payload: TokenPayload = {
@@ -444,18 +467,22 @@ export class AuthService {
           role: user.role.toString(),
         };
 
-        const newAccessToken = this.jwtService.sign(payload);
+        const newAccessToken = this.jwtService.sign(payload, {
+          secret: this.configService.get<string>('JWT_SECRET'),
+          expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '15m'),
+        });
+
         const newRefreshToken = this.jwtService.sign(payload, {
-          secret: this.configService.get<string>("JWT_REFRESH_SECRET"),
-          expiresIn: this.configService.get<string>("JWT_REFRESH_EXPIRES_IN", "30d"),
+          secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+          expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d'),
         });
 
         this.logger.log(`Generated new access token for user: ${user.id}, email: ${user.email}, role: ${user.role}`);
         return {
           access_token: newAccessToken,
           refresh_token: newRefreshToken,
-          token_type: "Bearer",
-          expires_in: parseInt(this.configService.get("JWT_EXPIRES_IN", "604800")),
+          token_type: 'Bearer',
+          expires_in: parseInt(this.configService.get('JWT_EXPIRES_IN', '900')), // 15 minutes in seconds
         };
       }
     } catch (error) {
@@ -482,14 +509,14 @@ export class AuthService {
       const supabaseUser = data.user as SupabaseUser;
 
       if (!supabaseUser?.email || !supabaseUser?.id) {
-        this.logger.error('Supabase user data incomplete', supabaseUser);
+        this.logger.error('Supabase user data incomplete', sanitizeLogData(supabaseUser));
         throw new BadRequestException('Invalid Supabase user data: missing email or id');
       }
 
-      const user = await this.findOrCreateUser(supabaseUser, "supabase");
+      const user = await this.findOrCreateUser(supabaseUser, 'supabase');
 
       if (!user?.id || !user?.email) {
-        this.logger.error('Created user data incomplete', user);
+        this.logger.error('Created user data incomplete', sanitizeLogData(user));
         throw new InternalServerErrorException('Failed to create or retrieve user');
       }
 
@@ -499,18 +526,22 @@ export class AuthService {
         role: user.role.toString(),
       };
 
-      const jwtAccessToken = this.jwtService.sign(payload);
+      const jwtAccessToken = this.jwtService.sign(payload, {
+        secret: this.configService.get<string>('JWT_SECRET'),
+        expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '15m'),
+      });
+
       const jwtRefreshToken = this.jwtService.sign(payload, {
-        secret: this.configService.get<string>("JWT_REFRESH_SECRET"),
-        expiresIn: this.configService.get<string>("JWT_REFRESH_EXPIRES_IN", "30d"),
+        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+        expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d'),
       });
 
       this.logger.log(`Login successful with Supabase token for user: ${user.id}, email: ${user.email}, role: ${user.role}`);
       return {
         access_token: jwtAccessToken,
         refresh_token: jwtRefreshToken,
-        token_type: "Bearer",
-        expires_in: parseInt(this.configService.get("JWT_EXPIRES_IN", "604800")),
+        token_type: 'Bearer',
+        expires_in: parseInt(this.configService.get('JWT_EXPIRES_IN', '900')), // 15 minutes in seconds
       };
     } catch (error) {
       this.logger.error(`Error logging in with Supabase token: ${error.message}`, error.stack);
@@ -520,6 +551,7 @@ export class AuthService {
       throw new InternalServerErrorException(`Cannot login with Supabase token: ${error.message}`);
     }
   }
+
   /**
    * Get user from Supabase access token
    */
@@ -539,6 +571,9 @@ export class AuthService {
    */
   public signJwt(payload: TokenPayload): string {
     this.logger.log(`Signing JWT for user: ${payload.email}`);
-    return this.jwtService.sign(payload);
+    return this.jwtService.sign(payload, {
+      secret: this.configService.get<string>('JWT_SECRET'),
+      expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '15m'),
+    });
   }
 }
