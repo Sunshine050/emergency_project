@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationGateway } from "./notification.gateway";
 import { CreateNotificationDto } from "./dto/notification.dto";
@@ -21,7 +21,6 @@ export class NotificationService {
       },
     });
 
-    // Send real-time notification via WebSocket
     this.notificationGateway.sendToUser(
       createNotificationDto.userId,
       "notification",
@@ -32,10 +31,20 @@ export class NotificationService {
   }
 
   async markAsRead(id: string, userId: string) {
-    return this.prisma.notification.update({
+    const notification = await this.prisma.notification.findFirst({
       where: {
         id,
         userId,
+      },
+    });
+
+    if (!notification) {
+      throw new NotFoundException(`Notification with ID ${id} not found for user ${userId}`);
+    }
+
+    return this.prisma.notification.update({
+      where: {
+        id,
       },
       data: {
         isRead: true,
@@ -44,6 +53,17 @@ export class NotificationService {
   }
 
   async markAllAsRead(userId: string) {
+    const notifications = await this.prisma.notification.findMany({
+      where: {
+        userId,
+        isRead: false,
+      },
+    });
+
+    if (notifications.length === 0) {
+      return { message: 'No unread notifications to mark as read' };
+    }
+
     return this.prisma.notification.updateMany({
       where: {
         userId,
@@ -56,12 +76,34 @@ export class NotificationService {
   }
 
   async findAll(userId: string) {
-    return this.prisma.notification.findMany({
+    console.log('[NotificationService] Fetching notifications for userId:', userId);
+    const notifications = await this.prisma.notification.findMany({
       where: {
         userId,
       },
       orderBy: {
         createdAt: "desc",
+      },
+    });
+    console.log('[NotificationService] Found notifications:', notifications);
+    return notifications;
+  }
+
+  async deleteNotification(id: string, userId: string) {
+    const notification = await this.prisma.notification.findFirst({
+      where: {
+        id,
+        userId,
+      },
+    });
+
+    if (!notification) {
+      throw new NotFoundException(`Notification with ID ${id} not found for user ${userId}`);
+    }
+
+    return this.prisma.notification.delete({
+      where: {
+        id,
       },
     });
   }
