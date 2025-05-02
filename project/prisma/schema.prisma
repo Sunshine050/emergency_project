@@ -23,7 +23,7 @@ model User {
   updatedAt         DateTime           @updatedAt
   organizationId    String?
   password          String?
-  medicalInfo       Json?              // เพิ่ม field นี้
+  medicalInfo       Json?
   emergencyRequests EmergencyRequest[] @relation("PatientRequests")
   notifications     Notification[]
   organization      Organization?      @relation(fields: [organizationId], references: [id])
@@ -65,18 +65,30 @@ enum EmergencyStatus {
   @@schema("emergency_project")
 }
 
+enum EmergencyType {
+  ACCIDENT
+  MEDICAL
+  FIRE
+  CRIME
+  OTHER
+
+  @@schema("emergency_project")
+}
+
 model EmergencyRequest {
-  id          String              @id @default(uuid())
-  status      EmergencyStatus     @default(PENDING) // เปลี่ยนจาก String เป็น EmergencyStatus
+  id          String           @id @default(uuid())
+  status      EmergencyStatus  @default(PENDING)
+  type        EmergencyType    @default(OTHER)
   description String
   location    String?
   latitude    Float?
   longitude   Float?
   medicalInfo Json?
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
+  notes       String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
   patientId   String
-  patient     User                @relation("PatientRequests", fields: [patientId], references: [id])
+  patient     User             @relation("PatientRequests", fields: [patientId], references: [id])
   responses   EmergencyResponse[]
 
   @@map("emergency_requests")
@@ -102,7 +114,7 @@ model EmergencyResponse {
 }
 
 model Notification {
-  id        String   @id @default(uuid()) // แก้จาก uuid10(uuid())
+  id        String   @id @default(uuid())
   type      String
   title     String
   body      String

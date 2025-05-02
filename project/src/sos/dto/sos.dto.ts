@@ -63,11 +63,16 @@ export class CreateEmergencyRequestDto {
   @IsObject()
   medicalInfo?: Record<string, any>;
 
-  @ApiProperty({ description: "Symptoms reported", required: false })
+  @ApiProperty({ description: "Symptoms reported", required: false, type: [String] })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   symptoms?: string[];
+
+  @ApiProperty({ description: "Patient ID (optional for EMERGENCY_CENTER)", required: false })
+  @IsOptional()
+  @IsString()
+  patientId?: string; // เพิ่มฟิลด์ patientId
 }
 
 export class UpdateEmergencyStatusDto {
@@ -109,7 +114,7 @@ export class EmergencyResponseDto {
   contactNumber: string;
 
   @ApiProperty({ description: "Type of the emergency" })
-  emergencyType: string;
+  type: string;
 
   @ApiProperty({ description: "Location of the emergency" })
   location: {
@@ -123,9 +128,29 @@ export class EmergencyResponseDto {
   @ApiProperty({ description: "Description of the emergency" })
   description: string;
 
-  @ApiProperty({ description: "Symptoms reported" })
+  @ApiProperty({ description: "Symptoms reported", type: [String] })
   symptoms: string[];
 
   @ApiProperty({ description: "Assigned organization", required: false })
   assignedTo?: string;
+}
+
+export class BroadcastStatusUpdateDto {
+  @ApiProperty({ description: "ID of the emergency request" })
+  @IsString()
+  emergencyId: string;
+
+  @ApiProperty({ enum: EmergencyStatus, description: "Status of the emergency" })
+  @IsEnum(EmergencyStatus)
+  status: EmergencyStatus;
+
+  @ApiProperty({ description: "ID of the organization to assign to", required: false })
+  @IsOptional()
+  @IsString()
+  assignedTo?: string;
+
+  @ApiProperty({ description: "Additional notes", required: false })
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }
