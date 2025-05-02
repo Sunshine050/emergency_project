@@ -6,8 +6,8 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { DashboardStatsResponseDto, EmergencyCaseDto, AssignCaseDto, CancelCaseDto } from './dto/dashboard.dto';
+import { CreateCaseDto } from './dto/dashboard.dto'; // เพิ่ม DTO ใหม่
 
-// เพิ่ม DTO สำหรับ response ของ getTeamLocations และ getHospitalCapacities
 class TeamLocationResponseDto {
   id: string;
   name: string;
@@ -86,5 +86,13 @@ export class DashboardController {
   @ApiResponse({ status: 200, description: 'Case cancelled successfully', type: EmergencyCaseDto })
   async cancelCase(@Body() cancelCaseDto: CancelCaseDto): Promise<EmergencyCaseDto> {
     return this.dashboardService.cancelCase(cancelCaseDto.caseId);
+  }
+
+  @Post('create-case')
+  @ApiOperation({ summary: 'Create a new emergency case' })
+  @ApiBody({ type: CreateCaseDto })
+  @ApiResponse({ status: 201, description: 'Case created successfully', type: EmergencyCaseDto })
+  async createCase(@Body() createCaseDto: CreateCaseDto): Promise<EmergencyCaseDto> {
+    return this.dashboardService.createCase(createCaseDto);
   }
 }

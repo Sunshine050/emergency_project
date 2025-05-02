@@ -85,3 +85,26 @@ export class CancelCaseDto {
   @ApiProperty()
   caseId: string;
 }
+
+export class CreateCaseDto {
+  @ApiProperty()
+  title: string;
+
+  @ApiProperty()
+  patientName: string;
+
+  @ApiProperty({ required: false })
+  contactNumber?: string;
+
+  @ApiProperty()
+  emergencyType: string;
+
+  @ApiProperty()
+  locationAddress: string;
+
+  @ApiProperty({ required: false })
+  description?: string;
+
+  @ApiProperty({ minimum: 1, maximum: 4 })
+  severity: number;
+}

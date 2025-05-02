@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmergencyStatus } from '../sos/dto/sos.dto';
 import { DashboardStatsResponseDto, EmergencyCaseDto } from './dto/dashboard.dto';
 import { NotificationGateway } from '../notification/notification.gateway';
+import { CreateCaseDto } from './dto/dashboard.dto';
 
 interface MedicalInfo {
   totalBeds?: number;
@@ -319,7 +320,7 @@ export class DashboardService {
     const payload = {
       emergencyId: updatedEmergency.id,
       status: updatedEmergency.status,
-      assignedTo: assignedToId, // เพิ่ม assignedTo เพื่อให้ frontend กรองได้
+      assignedTo: assignedToId,
     };
     this.logger.log(`Assign case ${caseId} to ${assignedToId}, broadcasting status update: ${JSON.stringify(payload)}`);
     this.notificationGateway.broadcastStatusUpdate(payload);
@@ -394,7 +395,7 @@ export class DashboardService {
     const payload = {
       emergencyId: updatedEmergency.id,
       status: updatedEmergency.status,
-      assignedTo: emergency.responses?.[0]?.organizationId || undefined, // เพิ่ม assignedTo
+      assignedTo: emergency.responses?.[0]?.organizationId || undefined,
     };
     this.logger.log(`Cancel case ${caseId}, broadcasting status update: ${JSON.stringify(payload)}`);
     this.notificationGateway.broadcastStatusUpdate(payload);
@@ -412,6 +413,73 @@ export class DashboardService {
       assignedTo: updatedEmergency.responses?.[0]?.organization?.name || undefined,
       description: updatedEmergency.description || 'No description provided',
       symptoms: updatedEmergency.symptoms || [],
+    };
+  }
+
+  async createCase(createCaseDto: CreateCaseDto): Promise<EmergencyCaseDto> {
+    const { title, patientName, contactNumber, emergencyType, locationAddress, description, severity } = createCaseDto;
+
+    const newEmergency = await this.prisma.emergencyRequest.create({
+      data: {
+        title,
+        status: EmergencyStatus.PENDING,
+        severity,
+        emergencyType,
+        description,
+        symptoms: [], // เริ่มต้นเป็น array ว่าง
+        location: {
+          address: locationAddress,
+          coordinates: { lat: 0, lng: 0 }, // ต้องเพิ่ม logic หาค่า lat/lng จริงในอนาคต
+        },
+        latitude: 0, // เก็บสำเนาค่า
+        longitude: 0, // เก็บสำเนาค่า
+        patient: {
+          create: {
+            email: `${patientName.toLowerCase().replace(/\s/g, '.')}-emergency@example.com`, // สร้าง email ชั่วคราว
+            firstName: patientName.split(" ")[0] || "Unknown",
+            lastName: patientName.split(" ")[1] || "",
+            phone: contactNumber || "N/A",
+            role: "PATIENT", // ตั้งค่า role ตาม default
+            status: "ACTIVE",
+          },
+        },
+      },
+      include: {
+        patient: { select: { id: true, firstName: true, lastName: true, phone: true } },
+        responses: { include: { organization: true } },
+      },
+    });
+
+    // สร้างการแจ้งเตือนและส่งผ่าน WebSocket
+    const notification = {
+      id: `notif-${new Date().getTime()}`,
+      title: `New Case Created: ${title}`,
+      description: `A new ${emergencyType} case has been reported by ${patientName}.`,
+      timestamp: new Date().toISOString(),
+      read: false,
+    };
+    this.notificationGateway.server.emit("notification", notification); // ส่งไปทุก client
+    this.notificationGateway.broadcastEmergency({
+      id: newEmergency.id,
+      type: emergencyType,
+      grade: severity === 4 ? "CRITICAL" : severity === 3 ? "URGENT" : "NORMAL",
+      location: { address: locationAddress },
+      coordinates: { latitude: 0, longitude: 0 }, // ต้องเพิ่ม logic หาค่า lat/lng
+    });
+
+    return {
+      id: newEmergency.id,
+      title: newEmergency.title || `Emergency ${newEmergency.id}`,
+      status: newEmergency.status,
+      severity: newEmergency.severity || 1,
+      reportedAt: newEmergency.createdAt?.toISOString() ?? new Date().toISOString(),
+      patientName: `${newEmergency.patient?.firstName || ""} ${newEmergency.patient?.lastName || ""}`.trim() || "Unknown",
+      contactNumber: newEmergency.patient?.phone || "N/A",
+      emergencyType: newEmergency.emergencyType || "Unknown",
+      location: this.parseLocation(newEmergency.location),
+      assignedTo: undefined,
+      description: newEmergency.description || "No description provided",
+      symptoms: newEmergency.symptoms || [],
     };
   }
 }
