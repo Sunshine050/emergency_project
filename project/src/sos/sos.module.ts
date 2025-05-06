@@ -4,6 +4,7 @@ import { SosService } from "./sos.service";
 import { PrismaModule } from "../prisma/prisma.module";
 import { NotificationModule } from "../notification/notification.module";
 
+
 @Module({
   imports: [PrismaModule, NotificationModule],
   controllers: [SosController],

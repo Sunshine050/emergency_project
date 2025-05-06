@@ -47,48 +47,34 @@ model Organization {
   status             String              @default("ACTIVE")
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
+  medicalInfo        Json?
+  availableBeds      Int?                @default(0) @map("available_beds")
+  totalBeds          Int?                @default(0) // ✅ เพิ่ม
+  icuBeds            Int?                @default(0) // ✅ เพิ่ม
+  availableIcuBeds   Int?                @default(0) // ✅ เพิ่ม
   emergencyResponses EmergencyResponse[]
   users              User[]
-  medicalInfo        Json?
 
   @@map("organizations")
   @@schema("emergency_project")
 }
 
-enum EmergencyStatus {
-  PENDING
-  ASSIGNED
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-
-  @@schema("emergency_project")
-}
-
-enum EmergencyType {
-  ACCIDENT
-  MEDICAL
-  FIRE
-  CRIME
-  OTHER
-
-  @@schema("emergency_project")
-}
 
 model EmergencyRequest {
-  id          String           @id @default(uuid())
-  status      EmergencyStatus  @default(PENDING)
-  type        EmergencyType    @default(OTHER)
+  id          String              @id @default(uuid())
+  status      EmergencyStatus     @default(PENDING)
   description String
   location    String?
   latitude    Float?
   longitude   Float?
   medicalInfo Json?
-  notes       String?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
   patientId   String
-  patient     User             @relation("PatientRequests", fields: [patientId], references: [id])
+  type        EmergencyType       @default(OTHER)
+  notes       String?
+  updatedBy   String?
+  patient     User                @relation("PatientRequests", fields: [patientId], references: [id])
   responses   EmergencyResponse[]
 
   @@map("emergency_requests")
@@ -126,6 +112,26 @@ model Notification {
   user      User     @relation(fields: [userId], references: [id])
 
   @@map("notifications")
+  @@schema("emergency_project")
+}
+
+enum EmergencyStatus {
+  PENDING
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+
+  @@schema("emergency_project")
+}
+
+enum EmergencyType {
+  ACCIDENT
+  MEDICAL
+  FIRE
+  CRIME
+  OTHER
+
   @@schema("emergency_project")
 }
 

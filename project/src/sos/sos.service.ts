@@ -22,8 +22,15 @@ export class SosService {
     createSosDto: CreateEmergencyRequestDto,
     userId: string,
   ) {
-    const patientId = createSosDto.patientId || userId; // ใช้ patientId จาก DTO ถ้ามี
+    const patientId = createSosDto.patientId || userId;
     console.log("Creating emergency with type:", createSosDto.type, "for patientId:", patientId);
+
+    const medicalInfo = {
+      ...(createSosDto.medicalInfo || {}),
+      grade: createSosDto.grade,
+      severity: createSosDto.grade === "CRITICAL" ? 5 : createSosDto.grade === "URGENT" ? 3 : 1,
+      emergencyType: createSosDto.type, // เพิ่ม emergencyType ใน medicalInfo
+    };
 
     const emergencyRequest = await this.prisma.emergencyRequest.create({
       data: {
@@ -33,10 +40,7 @@ export class SosService {
         location: createSosDto.location,
         latitude: createSosDto.latitude,
         longitude: createSosDto.longitude,
-        medicalInfo: {
-          ...createSosDto.medicalInfo,
-          grade: createSosDto.grade,
-        },
+        medicalInfo,
         patientId,
       },
       include: {
@@ -85,6 +89,97 @@ export class SosService {
     });
 
     return emergencyRequest;
+  }
+
+  async assignToHospital(emergencyId: string, hospitalId: string, userId: string) {
+    const updatedEmergency = await this.prisma.$transaction(async (prisma) => {
+      const emergency = await prisma.emergencyRequest.findUnique({
+        where: { id: emergencyId },
+        include: {
+          patient: true,
+          responses: {
+            include: {
+              organization: true,
+            },
+          },
+        },
+      });
+
+      if (!emergency) {
+        throw new NotFoundException("Emergency request not found");
+      }
+
+      if (emergency.status !== EmergencyStatus.PENDING) {
+        throw new NotFoundException("Only PENDING cases can be assigned");
+      }
+
+      const updated = await prisma.emergencyRequest.update({
+        where: { id: emergencyId },
+        data: {
+          status: EmergencyStatus.ASSIGNED,
+          updatedBy: userId,
+        },
+        include: {
+          patient: true,
+          responses: {
+            include: {
+              organization: true,
+            },
+          },
+        },
+      });
+
+      await prisma.emergencyResponse.create({
+        data: {
+          emergencyRequestId: emergencyId,
+          organizationId: hospitalId,
+          status: "ASSIGNED",
+          createdAt: new Date(),
+        },
+      });
+
+      const hospitalUsers = await prisma.user.findMany({
+        where: {
+          organizationId: hospitalId,
+          role: UserRole.HOSPITAL,
+          status: "ACTIVE",
+        },
+      });
+
+      for (const user of hospitalUsers) {
+        await this.notificationService.createNotification({
+          type: "ASSIGNMENT",
+          title: "New Emergency Assignment",
+          body: `You have been assigned to emergency case ${emergencyId} (${emergency.type})`,
+          userId: user.id,
+          metadata: {
+            emergencyId: emergencyId,
+            status: EmergencyStatus.ASSIGNED,
+            patientName: `${emergency.patient.firstName} ${emergency.patient.lastName}`,
+          },
+        });
+      }
+
+      await this.notificationService.createNotification({
+        type: "STATUS_UPDATE",
+        title: "Emergency Status Update",
+        body: `Your emergency request has been assigned to a hospital`,
+        userId: emergency.patientId,
+        metadata: {
+          emergencyId: emergencyId,
+          status: EmergencyStatus.ASSIGNED,
+        },
+      });
+
+      return updated;
+    });
+
+    this.notificationGateway.broadcastStatusUpdate({
+      emergencyId: updatedEmergency.id,
+      status: updatedEmergency.status,
+    });
+
+    return updatedEmergency;
   }
 
   async updateStatus(id: string, updateStatusDto: UpdateEmergencyStatusDto) {
@@ -190,7 +285,11 @@ export class SosService {
       throw new NotFoundException("No emergency requests found for this user");
     }
 
-    return emergencyRequests;
+    return emergencyRequests.map((request) => ({
+      ...request,
+      emergencyType: request.type,
+      medicalInfo: request.medicalInfo || { grade: "NON_URGENT", severity: 1 },
+    }));
   }
 
   async getEmergencyRequestById(id: string, userId: string) {
@@ -225,7 +324,11 @@ export class SosService {
       throw new NotFoundException("Emergency request not found");
     }
 
-    return emergencyRequest;
+    return {
+      ...emergencyRequest,
+      emergencyType: emergencyRequest.type,
+      medicalInfo: emergencyRequest.medicalInfo || { grade: "NON_URGENT", severity: 1 },
+    };
   }
 
   async getAllEmergencyRequests() {
@@ -244,6 +347,10 @@ export class SosService {
       throw new NotFoundException("No emergency requests found");
     }
 
-    return emergencyRequests;
+    return emergencyRequests.map((request) => ({
+      ...request,
+      emergencyType: request.type,
+      medicalInfo: request.medicalInfo || { grade: "NON_URGENT", severity: 1 },
+    }));
   }
 }

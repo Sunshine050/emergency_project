@@ -1,57 +1,39 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { Response } from 'express';
-import { UnauthorizedException, HttpStatus, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { HttpStatus, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { RegisterDto, LoginDto, OAuthLoginDto, RefreshTokenDto } from './dto/auth.dto';
+import { Response } from 'express';
 
 describe('AuthController', () => {
   let controller: AuthController;
-  let authService: AuthService;
-
-  const mockAuthService = {
-    generateAuthUrl: jest.fn(),
-    handleOAuthCallback: jest.fn(),
-    refreshToken: jest.fn(),
-    login: jest.fn(),
-    findOrCreateUser: jest.fn(),
-    getUserFromAccessToken: jest.fn(),
-    signJwt: jest.fn(),
-    loginWithSupabaseToken: jest.fn(),
-  };
-
-  const mockConfigService = {
-    get: jest.fn().mockImplementation((key: string) => {
-      if (key === 'SUPABASE_URL') return 'https://mock.supabase.co';
-      if (key === 'SUPABASE_SERVICE_ROLE_KEY') return 'mock-key';
-      if (key === 'JWT_EXPIRES_IN') return '900';
-      if (key === 'JWT_REFRESH_EXPIRES_IN') return '604800';
-      return null;
-    }),
-  };
-
-  const mockResponse = {
-    status: jest.fn().mockReturnThis(),
-    json: jest.fn().mockReturnThis(),
-  } as unknown as Response;
+  let mockAuthService: any;
+  let mockConfigService: any;
 
   beforeEach(async () => {
+    mockAuthService = {
+      register: jest.fn(),
+      login: jest.fn(),
+      generateAuthUrl: jest.fn(),
+      handleOAuthCallback: jest.fn(),
+      loginWithSupabaseToken: jest.fn(),
+      refreshToken: jest.fn(),
+    };
+
+    mockConfigService = {
+      get: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
       providers: [
-        {
-          provide: AuthService,
-          useValue: mockAuthService,
-        },
-        {
-          provide: ConfigService,
-          useValue: mockConfigService,
-        },
+        { provide: AuthService, useValue: mockAuthService },
+        { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();
 
     controller = module.get<AuthController>(AuthController);
-    authService = module.get<AuthService>(AuthService);
   });
 
   afterEach(() => {
@@ -62,192 +44,142 @@ describe('AuthController', () => {
     expect(controller).toBeDefined();
   });
 
-  describe('oauthLogin', () => {
-    it('should generate auth URL for valid provider', async () => {
-      const mockUrl = 'https://auth.provider.com/oauth';
-      mockAuthService.generateAuthUrl.mockResolvedValue(mockUrl);
-
-      await controller.oauthLogin({ provider: 'google' }, mockResponse);
-
-      expect(mockAuthService.generateAuthUrl).toHaveBeenCalledWith('google');
-      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.OK);
-      expect(mockResponse.json).toHaveBeenCalledWith({ url: mockUrl });
-    });
-
-    it('should return 400 for missing provider', async () => {
-      await controller.oauthLogin({ provider: '' }, mockResponse);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        message: 'Provider is required',
-      });
-    });
-
-    it('should return 400 for invalid provider', async () => {
-      mockAuthService.generateAuthUrl.mockRejectedValue(new BadRequestException('Unsupported provider: invalid'));
-
-      await controller.oauthLogin({ provider: 'invalid' }, mockResponse);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        message: 'Cannot initiate OAuth login',
-        error: 'Unsupported provider: invalid',
-      });
-    });
-  });
-
-  describe('oauthCallback', () => {
-    it('should handle successful callback with code (Authorization Code Flow)', async () => {
-      const mockAuthResult = {
-        access_token: 'token-123',
-        refresh_token: 'refresh-token-123',
-        token_type: 'Bearer',
-        expires_in: 900,
+  describe('register', () => {
+    it('should register a new user successfully', async () => {
+      const registerDto: RegisterDto = {
+        email: 'test@example.com',
+        password: 'password123',
+        firstName: 'John',
+        lastName: 'Doe',
+        phone: '1234567890',
+        role: 'ADMIN',
       };
-
-      mockAuthService.handleOAuthCallback.mockResolvedValue(mockAuthResult);
-
-      await controller.oauthCallback('google', 'auth-code', undefined, mockResponse);
-
-      expect(mockAuthService.handleOAuthCallback).toHaveBeenCalledWith('google', 'auth-code');
-      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.OK);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        message: 'OAuth callback successful',
-        access_token: mockAuthResult.access_token,
-        refresh_token: mockAuthResult.refresh_token,
-        token_type: mockAuthResult.token_type,
-        expires_in: mockAuthResult.expires_in,
-      });
-    });
-
-    it('should handle successful callback with access_token (Implicit Flow)', async () => {
-      const mockAuthResult = {
-        access_token: 'jwt-token',
-        refresh_token: 'refresh-token',
-        token_type: 'Bearer',
-        expires_in: 900,
+      const mockUser = {
+        id: 'user-123',
+        email: 'test@example.com',
+        firstName: 'John',
+        lastName: 'Doe',
+        phone: '1234567890',
+        role: 'ADMIN',
+        status: 'ACTIVE',
+        supabaseUserId: null,
       };
+      mockAuthService.register.mockResolvedValue(mockUser);
 
-      mockAuthService.loginWithSupabaseToken.mockResolvedValue(mockAuthResult);
+      const mockResponse = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
 
-      await controller.oauthCallback('google', undefined, 'access-token', mockResponse);
+      await controller.register(registerDto, mockResponse);
 
-      expect(mockAuthService.loginWithSupabaseToken).toHaveBeenCalledWith('access-token');
-      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.OK);
+      expect(mockAuthService.register).toHaveBeenCalledWith(registerDto);
+      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.CREATED);
       expect(mockResponse.json).toHaveBeenCalledWith({
-        message: 'OAuth callback successful',
-        access_token: mockAuthResult.access_token,
-        refresh_token: mockAuthResult.refresh_token,
-        token_type: mockAuthResult.token_type,
-        expires_in: mockAuthResult.expires_in,
+        message: 'Registration successful',
+        user: mockUser,
       });
     });
 
-    it('should return 400 if provider is missing', async () => {
-      await controller.oauthCallback(undefined, undefined, undefined, mockResponse);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        message: 'Missing provider in callback',
-      });
-    });
-
-    it('should return 400 if both code and access_token are missing', async () => {
-      await controller.oauthCallback('google', undefined, undefined, mockResponse);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        message: 'Missing code or access_token in callback',
-      });
-    });
-
-    it('should return 401 for invalid callback', async () => {
-      mockAuthService.handleOAuthCallback.mockRejectedValue(new UnauthorizedException('Invalid code'));
-
-      await controller.oauthCallback('google', 'invalid', undefined, mockResponse);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.UNAUTHORIZED);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        message: 'Cannot authenticate with provider',
-        error: 'Invalid code',
-      });
-    });
-  });
-
-  describe('refreshToken', () => {
-    it('should refresh token successfully', async () => {
-      const mockRefreshResult = {
-        access_token: 'new-token-123',
-        refresh_token: 'new-refresh-token-123',
-        token_type: 'Bearer',
-        expires_in: 900,
+    it('should return 409 if email already exists', async () => {
+      const registerDto: RegisterDto = {
+        email: 'test@example.com',
+        password: 'password123',
+        firstName: 'John',
+        lastName: 'Doe',
+        phone: '1234567890',
+        role: 'ADMIN',
       };
+      mockAuthService.register.mockRejectedValue({
+        status: 409,
+        message: 'This email is already in use',
+      });
 
-      mockAuthService.refreshToken.mockResolvedValue(mockRefreshResult);
+      const mockResponse = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
 
-      await controller.refreshToken({ refreshToken: 'valid-refresh-token' }, mockResponse);
+      await controller.register(registerDto, mockResponse);
 
-      expect(mockAuthService.refreshToken).toHaveBeenCalledWith('valid-refresh-token');
-      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.OK);
+      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.CONFLICT);
       expect(mockResponse.json).toHaveBeenCalledWith({
-        message: 'Token refreshed successfully',
-        access_token: mockRefreshResult.access_token,
-        refresh_token: mockRefreshResult.refresh_token,
-        token_type: mockRefreshResult.token_type,
-        expires_in: mockRefreshResult.expires_in,
+        message: 'Registration failed',
+        error: 'This email is already in use',
       });
     });
 
-    it('should return 400 for missing refresh token', async () => {
-      await controller.refreshToken({ refreshToken: '' }, mockResponse);
+    it('should return 400 for other registration errors', async () => {
+      const registerDto: RegisterDto = {
+        email: 'test@example.com',
+        password: 'password123',
+        firstName: 'John',
+        lastName: 'Doe',
+        phone: '1234567890',
+        role: 'ADMIN',
+      };
+      mockAuthService.register.mockRejectedValue(new Error('Invalid data'));
+
+      const mockResponse = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+
+      await controller.register(registerDto, mockResponse);
 
       expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
       expect(mockResponse.json).toHaveBeenCalledWith({
-        message: 'Refresh token is required',
-      });
-    });
-
-    it('should return 401 for invalid refresh token', async () => {
-      mockAuthService.refreshToken.mockRejectedValue(new UnauthorizedException('Invalid refresh token'));
-
-      await controller.refreshToken({ refreshToken: 'invalid-refresh-token' }, mockResponse);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.UNAUTHORIZED);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        message: 'Cannot refresh token',
-        error: 'Invalid refresh token',
+        message: 'Registration failed',
+        error: 'Invalid data',
       });
     });
   });
 
   describe('login', () => {
     it('should login successfully', async () => {
-      const mockLoginResult = {
-        access_token: 'token-123',
-        refresh_token: 'refresh-token-123',
+      const loginDto: LoginDto = {
+        email: 'test@example.com',
+        password: 'password123',
+      };
+      const authResult = {
+        access_token: 'access-token',
+        refresh_token: 'refresh-token',
         token_type: 'Bearer',
         expires_in: 900,
       };
+      mockAuthService.login.mockResolvedValue(authResult);
 
-      mockAuthService.login.mockResolvedValue(mockLoginResult);
+      const mockResponse = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
 
-      await controller.login({ email: 'test@example.com', password: 'password' }, mockResponse);
+      await controller.login(loginDto, mockResponse);
 
-      expect(mockAuthService.login).toHaveBeenCalledWith({ email: 'test@example.com', password: 'password' });
+      expect(mockAuthService.login).toHaveBeenCalledWith(loginDto);
       expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.OK);
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: 'Login successful',
-        access_token: mockLoginResult.access_token,
-        refresh_token: mockLoginResult.refresh_token,
-        token_type: mockLoginResult.token_type,
-        expires_in: mockLoginResult.expires_in,
+        access_token: 'access-token',
+        refresh_token: 'refresh-token',
+        token_type: 'Bearer',
+        expires_in: 900,
       });
     });
 
     it('should return 401 for invalid credentials', async () => {
+      const loginDto: LoginDto = {
+        email: 'test@example.com',
+        password: 'wrong-password',
+      };
       mockAuthService.login.mockRejectedValue(new UnauthorizedException('Invalid email or password'));
 
-      await controller.login({ email: 'test@example.com', password: 'wrong' }, mockResponse);
+      const mockResponse = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+
+      await controller.login(loginDto, mockResponse);
 
       expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.UNAUTHORIZED);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -257,48 +189,295 @@ describe('AuthController', () => {
     });
   });
 
-  describe('supabaseLogin', () => {
-    it('should login with Supabase token successfully', async () => {
-      const mockLoginResult = {
-        access_token: 'supabase-token-123',
-        refresh_token: 'supabase-refresh-token-123',
+  describe('oauthLogin', () => {
+    it('should generate OAuth URL successfully', async () => {
+      const oauthLoginDto: OAuthLoginDto = { provider: 'google' };
+      const authUrl = 'https://supabase.co/auth/v1/authorize?provider=google';
+      mockAuthService.generateAuthUrl.mockResolvedValue(authUrl);
+
+      const mockResponse = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+
+      await controller.oauthLogin(oauthLoginDto, mockResponse);
+
+      expect(mockAuthService.generateAuthUrl).toHaveBeenCalledWith('google');
+      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.OK);
+      expect(mockResponse.json).toHaveBeenCalledWith({ url: authUrl });
+    });
+
+    it('should return 400 if provider is missing', async () => {
+      const oauthLoginDto: OAuthLoginDto = { provider: '' };
+      const mockResponse = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+
+      await controller.oauthLogin(oauthLoginDto, mockResponse);
+
+      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: 'Provider is required',
+      });
+    });
+  });
+
+  describe('oauthCallback', () => {
+    it('should handle OAuth callback with code successfully', async () => {
+      const authResult = {
+        access_token: 'access-token',
+        refresh_token: 'refresh-token',
         token_type: 'Bearer',
         expires_in: 900,
       };
+      mockAuthService.handleOAuthCallback.mockResolvedValue(authResult);
 
-      mockAuthService.loginWithSupabaseToken.mockResolvedValue(mockLoginResult);
+      const mockResponse = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
 
-      await controller.supabaseLogin({ access_token: 'supabase-access-token' }, mockResponse);
+      await controller.oauthCallback('google', 'auth-code', undefined, mockResponse);
 
-      expect(mockAuthService.loginWithSupabaseToken).toHaveBeenCalledWith('supabase-access-token');
+      expect(mockAuthService.handleOAuthCallback).toHaveBeenCalledWith('google', 'auth-code');
+      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.OK);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: 'OAuth callback successful',
+        access_token: 'access-token',
+        refresh_token: 'refresh-token',
+        token_type: 'Bearer',
+        expires_in: 900,
+      });
+    });
+
+    it('should handle OAuth callback with access token successfully', async () => {
+      const authResult = {
+        access_token: 'access-token',
+        refresh_token: 'refresh-token',
+        token_type: 'Bearer',
+        expires_in: 900,
+      };
+      mockAuthService.loginWithSupabaseToken.mockResolvedValue(authResult);
+
+      const mockResponse = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+
+      await controller.oauthCallback('google', undefined, 'access-token', mockResponse);
+
+      expect(mockAuthService.loginWithSupabaseToken).toHaveBeenCalledWith('access-token');
+      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.OK);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: 'OAuth callback successful',
+        access_token: 'access-token',
+        refresh_token: 'refresh-token',
+        token_type: 'Bearer',
+        expires_in: 900,
+      });
+    });
+
+    it('should return 400 if provider is missing', async () => {
+      const mockResponse = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+
+      await controller.oauthCallback('', 'auth-code', undefined, mockResponse);
+
+      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: 'Missing provider in callback',
+      });
+    });
+
+    it('should return 400 if code and access_token are missing', async () => {
+      const mockResponse = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+
+      await controller.oauthCallback('google', undefined, undefined, mockResponse);
+
+      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: 'Missing code or access_token in callback',
+      });
+    });
+
+    it('should return 401 if OAuth callback fails', async () => {
+      mockAuthService.handleOAuthCallback.mockRejectedValue(new UnauthorizedException('Cannot authenticate with provider'));
+
+      const mockResponse = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+
+      await controller.oauthCallback('google', 'auth-code', undefined, mockResponse);
+
+      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.UNAUTHORIZED);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: 'Cannot authenticate with provider',
+        error: 'Cannot authenticate with provider',
+      });
+    });
+  });
+
+  describe('refreshToken', () => {
+    it('should refresh token successfully', async () => {
+      const refreshTokenDto: RefreshTokenDto = { refreshToken: 'refresh-token' };
+      const authResult = {
+        access_token: 'new-access-token',
+        refresh_token: 'new-refresh-token',
+        token_type: 'Bearer',
+        expires_in: 900,
+      };
+      mockAuthService.refreshToken.mockResolvedValue(authResult);
+
+      const mockResponse = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+
+      await controller.refreshToken(refreshTokenDto, mockResponse);
+
+      expect(mockAuthService.refreshToken).toHaveBeenCalledWith('refresh-token');
+      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.OK);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: 'Token refreshed successfully',
+        access_token: 'new-access-token',
+        refresh_token: 'new-refresh-token',
+        token_type: 'Bearer',
+        expires_in: 900,
+      });
+    });
+
+    it('should return 400 for missing refresh token', async () => {
+      const refreshTokenDto: RefreshTokenDto = { refreshToken: '' };
+      const mockResponse = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+
+      await controller.refreshToken(refreshTokenDto, mockResponse);
+
+      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: 'Cannot refresh token',
+        error: 'Refresh token is required',
+      });
+    });
+
+    it('should return 400 for invalid refresh token', async () => {
+      const refreshTokenDto: RefreshTokenDto = { refreshToken: 'invalid-token' };
+      mockAuthService.refreshToken.mockRejectedValue(new UnauthorizedException('Invalid refresh token'));
+
+      const mockResponse = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+
+      await controller.refreshToken(refreshTokenDto, mockResponse);
+
+      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: 'Cannot refresh token',
+        error: 'Invalid refresh token',
+      });
+    });
+  });
+
+  describe('supabaseLogin', () => {
+    it('should login with Supabase token successfully', async () => {
+      const body = { access_token: 'supabase-token' };
+      const authResult = {
+        access_token: 'access-token',
+        refresh_token: 'refresh-token',
+        token_type: 'Bearer',
+        expires_in: 900,
+      };
+      mockAuthService.loginWithSupabaseToken.mockResolvedValue(authResult);
+
+      const mockResponse = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+
+      await controller.supabaseLogin(body, mockResponse);
+
+      expect(mockAuthService.loginWithSupabaseToken).toHaveBeenCalledWith('supabase-token');
       expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.OK);
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: 'Supabase login successful',
-        access_token: mockLoginResult.access_token,
-        refresh_token: mockLoginResult.refresh_token,
-        token_type: mockLoginResult.token_type,
-        expires_in: mockLoginResult.expires_in,
+        access_token: 'access-token',
+        refresh_token: 'refresh-token',
+        token_type: 'Bearer',
+        expires_in: 900,
       });
     });
 
     it('should return 400 for missing access token', async () => {
-      await controller.supabaseLogin({ access_token: '' }, mockResponse);
+      const body = { access_token: '' };
+      const mockResponse = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+
+      await controller.supabaseLogin(body, mockResponse);
 
       expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
       expect(mockResponse.json).toHaveBeenCalledWith({
-        message: 'Access token is required',
+        message: 'Cannot login with Supabase token',
+        error: 'Access token is required',
       });
     });
 
-    it('should return 401 for invalid Supabase token', async () => {
-      mockAuthService.loginWithSupabaseToken.mockRejectedValue(new UnauthorizedException('Invalid Supabase token'));
+    it('should return 400 for invalid Supabase token', async () => {
+      const body = { access_token: 'invalid-token' };
+      mockAuthService.loginWithSupabaseToken.mockRejectedValue(new UnauthorizedException('Cannot validate token'));
 
-      await controller.supabaseLogin({ access_token: 'invalid-token' }, mockResponse);
+      const mockResponse = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
 
-      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.UNAUTHORIZED);
+      await controller.supabaseLogin(body, mockResponse);
+
+      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: 'Cannot login with Supabase token',
-        error: 'Invalid Supabase token',
+        error: 'Cannot validate token',
+      });
+    });
+  });
+
+  describe('getProfile', () => {
+    it('should return user profile', async () => {
+      const mockRequest = {
+        user: { id: 'user-123', email: 'test@example.com', role: 'PATIENT' },
+      } as any;
+
+      const result = controller.getProfile(mockRequest);
+
+      expect(result).toEqual({
+        message: 'User profile retrieved',
+        user: mockRequest.user,
+      });
+    });
+  });
+
+  describe('verifyToken', () => {
+    it('should verify token successfully', async () => {
+      const mockRequest = {
+        user: { id: 'user-123', email: 'test@example.com', role: 'PATIENT' },
+      } as any;
+
+      const result = await controller.verifyToken(mockRequest);
+
+      expect(result).toEqual({
+        message: 'Token is valid',
+        user: mockRequest.user,
       });
     });
   });

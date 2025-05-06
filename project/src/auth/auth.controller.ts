@@ -28,7 +28,6 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 
-// ฟังก์ชันช่วยกรองข้อมูลที่อ่อนไหวก่อนล็อก
 const sanitizeLogData = (data: any) => {
   const { access_token, refresh_token, password, ...safeData } = data;
   return safeData;
@@ -44,9 +43,6 @@ export class AuthController {
     private readonly configService: ConfigService,
   ) {}
 
-  /**
-   * Register a new user (staff) with email and password
-   */
   @Public()
   @Post('register')
   @ApiOperation({ summary: 'Register a new user (staff)' })
@@ -82,9 +78,6 @@ export class AuthController {
     }
   }
 
-  /**
-   * Login with email and password
-   */
   @Public()
   @Post('login')
   @ApiOperation({ summary: 'Login with email and password' })
@@ -112,39 +105,33 @@ export class AuthController {
     }
   }
 
-  /**
-   * Initiates OAuth login flow by generating an authorization URL
-   */
   @Public()
-@Post('login/oauth')
-@ApiOperation({ summary: 'Initiate OAuth login flow' })
-@ApiBody({ type: OAuthLoginDto })
-@ApiResponse({ status: 200, description: 'OAuth URL generated' })
-@ApiResponse({ status: 400, description: 'Invalid provider' })
-async oauthLogin(@Body() oauthLoginDto: OAuthLoginDto, @Res() res: Response) {
-  this.logger.log(`OAuth login endpoint hit with provider: ${oauthLoginDto.provider}`);
-  try {
-    if (!oauthLoginDto.provider) {
-      this.logger.warn('Missing provider in OAuth login request');
+  @Post('login/oauth')
+  @ApiOperation({ summary: 'Initiate OAuth login flow' })
+  @ApiBody({ type: OAuthLoginDto })
+  @ApiResponse({ status: 200, description: 'OAuth URL generated' })
+  @ApiResponse({ status: 400, description: 'Invalid provider' })
+  async oauthLogin(@Body() oauthLoginDto: OAuthLoginDto, @Res() res: Response) {
+    this.logger.log(`OAuth login endpoint hit with provider: ${oauthLoginDto.provider}`);
+    try {
+      if (!oauthLoginDto.provider) {
+        this.logger.warn('Missing provider in OAuth login request');
+        return res.status(HttpStatus.BAD_REQUEST).json({
+          message: 'Provider is required',
+        });
+      }
+      const authUrl: string = await this.authService.generateAuthUrl(oauthLoginDto.provider);
+      this.logger.log(`OAuth URL generated for provider: ${oauthLoginDto.provider}, url: ${authUrl}`);
+      return res.status(HttpStatus.OK).json({ url: authUrl });
+    } catch (error) {
+      this.logger.error(`Error in OAuth login: ${error.message}`, error.stack);
       return res.status(HttpStatus.BAD_REQUEST).json({
-        message: 'Provider is required',
+        message: 'Cannot initiate OAuth login',
+        error: error.message,
       });
     }
-    const authUrl: string = await this.authService.generateAuthUrl(oauthLoginDto.provider);
-    this.logger.log(`OAuth URL generated for provider: ${oauthLoginDto.provider}, url: ${authUrl}`);
-    return res.status(HttpStatus.OK).json({ url: authUrl });
-  } catch (error) {
-    this.logger.error(`Error in OAuth login: ${error.message}`, error.stack);
-    return res.status(HttpStatus.BAD_REQUEST).json({
-      message: 'Cannot initiate OAuth login',
-      error: error.message,
-    });
   }
-}
 
-  /**
-   * Handles OAuth callback from providers
-   */
   @Public()
   @Get('callback')
   @ApiOperation({ summary: 'Handle OAuth callback' })
@@ -172,11 +159,9 @@ async oauthLogin(@Body() oauthLoginDto: OAuthLoginDto, @Res() res: Response) {
     try {
       let authResult;
       if (code) {
-        // Authorization Code Flow
         authResult = await this.authService.handleOAuthCallback(provider, code);
         this.logger.log(`OAuth callback successful (code flow) for provider: ${provider}, token_type: ${authResult.token_type}, expires_in: ${authResult.expires_in}`);
       } else if (accessToken) {
-        // Implicit Flow: Use access_token directly
         authResult = await this.authService.loginWithSupabaseToken(accessToken);
         this.logger.log(`OAuth callback successful (implicit flow) for provider: ${provider}, token_type: ${authResult.token_type}, expires_in: ${authResult.expires_in}`);
       } else {
@@ -202,9 +187,6 @@ async oauthLogin(@Body() oauthLoginDto: OAuthLoginDto, @Res() res: Response) {
     }
   }
 
-  /**
-   * Test endpoint to verify user authentication
-   */
   @UseGuards(JwtAuthGuard)
   @Get('me')
   @ApiOperation({ summary: 'Get authenticated user profile' })
@@ -219,9 +201,6 @@ async oauthLogin(@Body() oauthLoginDto: OAuthLoginDto, @Res() res: Response) {
     };
   }
 
-  /**
-   * Verify JWT token
-   */
   @UseGuards(JwtAuthGuard)
   @Get('verify-token')
   @ApiOperation({ summary: 'Verify JWT token' })
@@ -236,15 +215,12 @@ async oauthLogin(@Body() oauthLoginDto: OAuthLoginDto, @Res() res: Response) {
     };
   }
 
-  /**
-   * Refreshes the JWT token using a refresh token
-   */
   @Public()
   @Post('refresh')
   @ApiOperation({ summary: 'Refresh JWT token' })
   @ApiBody({ type: RefreshTokenDto })
   @ApiResponse({ status: 200, description: 'Token refreshed successfully' })
-  @ApiResponse({ status: 401, description: 'Invalid refresh token' })
+  @ApiResponse({ status: 400, description: 'Missing refresh token' })
   async refreshToken(@Body() body: RefreshTokenDto, @Res() res: Response) {
     this.logger.log('Refresh token endpoint hit');
     try {
@@ -263,22 +239,19 @@ async oauthLogin(@Body() oauthLoginDto: OAuthLoginDto, @Res() res: Response) {
       });
     } catch (error) {
       this.logger.error(`Error during token refresh: ${error.message}`, error.stack);
-      return res.status(HttpStatus.UNAUTHORIZED).json({
+      return res.status(HttpStatus.BAD_REQUEST).json({
         message: 'Cannot refresh token',
         error: error.message,
       });
     }
   }
 
-  /**
-   * Login with Supabase access token
-   */
   @Public()
   @Post('supabase-login')
   @ApiOperation({ summary: 'Login with Supabase token' })
   @ApiBody({ schema: { type: 'object', properties: { access_token: { type: 'string' } } } })
   @ApiResponse({ status: 200, description: 'Supabase login successful' })
-  @ApiResponse({ status: 401, description: 'Invalid Supabase token' })
+  @ApiResponse({ status: 400, description: 'Missing access token' })
   async supabaseLogin(@Body() body: { access_token: string }, @Res() res: Response) {
     this.logger.log('Supabase login endpoint hit');
     try {
@@ -297,7 +270,7 @@ async oauthLogin(@Body() oauthLoginDto: OAuthLoginDto, @Res() res: Response) {
       });
     } catch (error) {
       this.logger.error(`Error during Supabase login: ${error.message}`, error.stack);
-      return res.status(HttpStatus.UNAUTHORIZED).json({
+      return res.status(HttpStatus.BAD_REQUEST).json({
         message: 'Cannot login with Supabase token',
         error: error.message,
       });

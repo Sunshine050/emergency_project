@@ -72,7 +72,7 @@ export class CreateEmergencyRequestDto {
   @ApiProperty({ description: "Patient ID (optional for EMERGENCY_CENTER)", required: false })
   @IsOptional()
   @IsString()
-  patientId?: string; // เพิ่มฟิลด์ patientId
+  patientId?: string;
 }
 
 export class UpdateEmergencyStatusDto {
@@ -84,11 +84,12 @@ export class UpdateEmergencyStatusDto {
   @IsOptional()
   @IsString()
   notes?: string;
+}
 
-  @ApiProperty({ description: "ID of the organization to assign to", required: false })
-  @IsOptional()
+export class AssignToHospitalDto {
+  @ApiProperty({ description: "ID of the hospital to assign to" })
   @IsString()
-  assignedToId?: string;
+  hospitalId: string;
 }
 
 export class EmergencyResponseDto {
@@ -98,8 +99,8 @@ export class EmergencyResponseDto {
   @ApiProperty({ description: "Title of the emergency request" })
   title: string;
 
-  @ApiProperty({ description: "Status of the emergency request" })
-  status: string;
+  @ApiProperty({ description: "Status of the emergency request", enum: EmergencyStatus })
+  status: EmergencyStatus;
 
   @ApiProperty({ description: "Severity of the emergency (1-4)" })
   severity: number;
@@ -113,8 +114,8 @@ export class EmergencyResponseDto {
   @ApiProperty({ description: "Contact number of the patient" })
   contactNumber: string;
 
-  @ApiProperty({ description: "Type of the emergency" })
-  type: string;
+  @ApiProperty({ description: "Type of the emergency", enum: EmergencyType })
+  emergencyType: EmergencyType;
 
   @ApiProperty({ description: "Location of the emergency" })
   location: {
@@ -143,14 +144,4 @@ export class BroadcastStatusUpdateDto {
   @ApiProperty({ enum: EmergencyStatus, description: "Status of the emergency" })
   @IsEnum(EmergencyStatus)
   status: EmergencyStatus;
-
-  @ApiProperty({ description: "ID of the organization to assign to", required: false })
-  @IsOptional()
-  @IsString()
-  assignedTo?: string;
-
-  @ApiProperty({ description: "Additional notes", required: false })
-  @IsOptional()
-  @IsString()
-  notes?: string;
 }

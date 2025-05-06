@@ -6,17 +6,14 @@ import { IoAdapter } from '@nestjs/platform-socket.io';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { RedocModule, RedocOptions } from 'nestjs-redoc';
 import * as cookieParser from 'cookie-parser';
-import { verify } from 'jsonwebtoken';
 
 async function bootstrap() {
   const app: INestApplication = await NestFactory.create(AppModule);
   app.useLogger(['log', 'error', 'warn', 'debug', 'verbose']);
   const configService = app.get(ConfigService);
 
-  // ใช้งาน cookie parser
   app.use(cookieParser());
 
-  // Configure global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -25,7 +22,6 @@ async function bootstrap() {
     }),
   );
 
-  // Enable CORS with support for credentials and cookies
   const clientUrl = configService.get('CLIENT_URL') || 'http://localhost:3000';
   app.enableCors({
     origin: clientUrl,
@@ -35,7 +31,14 @@ async function bootstrap() {
     exposedHeaders: ['Set-Cookie'],
   });
 
-  // ตั้งค่า Swagger
+  // ตั้งค่า WebSocket adapter
+  class CustomIoAdapter extends IoAdapter {
+    constructor(app: INestApplication) {
+      super(app);
+    }
+  }
+  app.useWebSocketAdapter(new CustomIoAdapter(app));
+
   const config = new DocumentBuilder()
     .setTitle('Emergency Project API')
     .setDescription('API documentation for Emergency Project')
@@ -45,7 +48,6 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-  // ตั้งค่า Redoc
   const redocOptions: RedocOptions = {
     title: 'Emergency Project API',
     logo: {
@@ -57,13 +59,7 @@ async function bootstrap() {
   };
   await RedocModule.setup('docs', app, document, redocOptions);
 
-  // ตั้งค่า WebSocket adapter
-  app.useWebSocketAdapter(new IoAdapter(app));
-
-  // Get port from environment variables
   const port = configService.get('PORT') || 3001;
-
-  // Listen server
   await app.listen(port);
 
   console.log(`Application is running on: http://localhost:${port}`);

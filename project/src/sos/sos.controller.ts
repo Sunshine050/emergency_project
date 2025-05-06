@@ -16,13 +16,24 @@ export class SosController {
   constructor(private readonly sosService: SosService) {}
 
   @Post()
-  @Roles(UserRole.PATIENT, UserRole.EMERGENCY_CENTER) // เพิ่ม EMERGENCY_CENTER
+  @Roles(UserRole.PATIENT, UserRole.EMERGENCY_CENTER)
   createEmergencyRequest(
     @Body() createSosDto: CreateEmergencyRequestDto,
     @CurrentUser() user: any,
   ) {
     console.log('createEmergencyRequest called with user:', user.id, 'and type:', createSosDto.type);
     return this.sosService.createEmergencyRequest(createSosDto, user.id);
+  }
+
+  @Post(":id/assign")
+  @Roles(UserRole.EMERGENCY_CENTER)
+  async assignToHospital(
+    @Param("id") id: string,
+    @Body() assignDto: { hospitalId: string },
+    @CurrentUser() user: any,
+  ) {
+    console.log('assignToHospital called with id:', id, 'and hospitalId:', assignDto.hospitalId);
+    return this.sosService.assignToHospital(id, assignDto.hospitalId, user.id);
   }
 
   @Put(":id/status")

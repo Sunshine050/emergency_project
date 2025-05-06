@@ -30,12 +30,20 @@ export class HospitalService {
 
   async create(createHospitalDto: CreateHospitalDto) {
     this.logger.log("Creating new hospital");
-    return this.prisma.organization.create({
+    const hospital = await this.prisma.organization.create({
       data: {
         ...createHospitalDto,
         type: "HOSPITAL",
       },
     });
+
+    // ส่ง event ผ่าน WebSocket เมื่อสร้างโรงพยาบาลสำเร็จ โดยเรียก method จาก NotificationService
+    await this.notificationService.broadcastHospitalCreated({
+      id: hospital.id,
+      name: hospital.name,
+    });
+
+    return hospital;
   }
 
   async findAll(search?: string) {
