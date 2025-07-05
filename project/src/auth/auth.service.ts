@@ -359,7 +359,7 @@ export class AuthService {
           access_token: this.jwtService.sign(newPayload),
         };
       } catch (jwtError) {
-        // ถ้าไม่ใช่ JWT refresh token ลองใช้ Supabase (สำหรับ OAuth)
+        
         const { data, error } = await this.supabase.auth.refreshSession({
           refresh_token: refreshToken,
         });
