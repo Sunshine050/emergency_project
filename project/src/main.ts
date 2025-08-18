@@ -2,9 +2,13 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import * as swaggerUi from 'swagger-ui-express';
+import redoc = require('redoc-express'); // TS declaration จะบอกว่า any
+import { writeFileSync } from 'fs';
+import * as fs from 'fs';
 import * as path from 'path';
-import * as express from 'express';
+import { join } from 'path';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -14,20 +18,30 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
   app.enableCors();
 
+  // ------------------------------
+  // สร้าง Swagger Document และเซฟเป็นไฟล์ JSON อัตโนมัติ
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('API Documentation')
+    .setTitle('Emergency Response System')
     .setDescription('API description')
     .setVersion('1.0')
-    .addBearerAuth()
     .build();
 
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, document);
+  const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
+  writeFileSync(join(__dirname, '..', 'swagger.json'), JSON.stringify(swaggerDocument, null, 2));
+  // ------------------------------
 
-  // Serve Redoc HTML manually
-  app.use('/api/redoc', express.static(path.join(__dirname, '..', 'redoc')));
-  
-  const port = configService.get<number>('PORT') || 3000;
+  // Swagger UI
+  const expressInstance = app.getHttpAdapter().getInstance();
+  expressInstance.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
+  // Redoc
+  expressInstance.get('/api/redoc', redoc({
+    title: 'API Docs',
+    specUrl: '/api/docs-json',
+  }));
+  expressInstance.get('/api/docs-json', (req, res) => res.json(swaggerDocument));
+
+  const port = configService.get('PORT') || 3000;
   await app.listen(port);
 
   console.log(`Swagger UI: http://localhost:${port}/api/docs`);
