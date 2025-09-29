@@ -153,9 +153,29 @@ export class AuthController {
     return this.authService.refreshToken(refreshToken);
   }
 
+  /**
+   * Login with Supabase token
+   */
+  @Public()
   @Post('supabase-login')
-async supabaseLogin(@Body() body: { access_token: string }) {
-  return this.authService.loginWithSupabaseToken(body.access_token);
-}
+  async supabaseLogin(@Body() body: { access_token: string }) {
+    return this.authService.loginWithSupabaseToken(body.access_token);
+  }
 
+  /**
+   * Verify JWT token (ใหม่ เพิ่ม)
+   */
+  @Public()
+  @Post('verify-token')
+  async verifyToken(@Body('token') token: string) {
+    try {
+      const payload = await this.authService.verifyToken(token);
+      return {
+        message: 'Token valid',
+        payload,
+      };
+    } catch (error) {
+      throw new UnauthorizedException(error.message);
+    }
+  }
 }

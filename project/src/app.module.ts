@@ -11,6 +11,7 @@ import { RescueModule } from './rescue/rescue.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { NotificationModule } from './notification/notification.module';
 import { SupabaseModule } from './supabase/supabase.module';
+import { SocketModule } from './socket/socket.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { SupabaseModule } from './supabase/supabase.module';
     RescueModule,
     DashboardModule,
     NotificationModule,
+    SocketModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -13,12 +13,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { SupabaseUser, TokenPayload, AuthTokens } from '../common/interfaces/auth.interface';
 import { UserRole, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import * as jwt from 'jsonwebtoken';
 import { RegisterDto, LoginDto } from './dto/auth.dto';
-import { SupabaseService } from '@/supabase/supabase.service';
+import { Socket } from 'socket.io'; // เพิ่ม import Socket
 import { config } from 'dotenv';
 config();
-
-
 
 @Injectable()
 export class AuthService {
@@ -44,7 +43,6 @@ export class AuthService {
 
     const { email, password, firstName, lastName, phone, role } = registerDto;
 
-    // ตรวจสอบบทบาท (ไม่อนุญาต PATIENT สำหรับการลงทะเบียนแบบปกติ)
     const allowedRoles: UserRole[] = [
       UserRole.EMERGENCY_CENTER,
       UserRole.HOSPITAL,
@@ -57,7 +55,6 @@ export class AuthService {
     }
 
     try {
-      // ตรวจสอบว่าอีเมลมีอยู่แล้วหรือไม่
       const existingUser = await this.prisma.user.findUnique({
         where: { email },
       });
@@ -67,11 +64,9 @@ export class AuthService {
         throw new ConflictException('อีเมลนี้ถูกใช้งานแล้ว');
       }
 
-      // เข้ารหัสรหัสผ่าน
       const saltRounds = 10;
       const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-      // สร้างผู้ใช้ใหม่
       const user = await this.prisma.user.create({
         data: {
           email,
@@ -103,7 +98,6 @@ export class AuthService {
     const { email, password } = loginDto;
 
     try {
-      // ค้นหาผู้ใช้
       const user = await this.prisma.user.findUnique({
         where: { email },
       });
@@ -113,7 +107,6 @@ export class AuthService {
         throw new UnauthorizedException('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
       }
 
-      // ตรวจสอบรหัสผ่าน
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
         this.logger.warn(`รหัสผ่านไม่ถูกต้องสำหรับ: ${email}`);
@@ -125,7 +118,6 @@ export class AuthService {
         throw new UnauthorizedException('บัญชีนี้ถูกปิดใช้งาน');
       }
 
-      // สร้าง JWT token
       const payload: TokenPayload = {
         sub: user.id,
         email: user.email,
@@ -134,7 +126,6 @@ export class AuthService {
 
       const accessToken = this.jwtService.sign(payload);
 
-      // สร้าง refresh token โดยใช้ JWT
       const refreshToken = this.jwtService.sign(payload, {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
         expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '30d'),
@@ -298,28 +289,74 @@ export class AuthService {
   }
 
   /**
-   * Validates a JWT token
-   */
-  async validateToken(token: string): Promise<TokenPayload> {
-    this.logger.log(`ตรวจสอบ token: ${token}`);
+ * Verify JWT token with detailed debug
+ */
+async verifyToken(token: string) {
+  try {
+    // 1️⃣ เช็คว่ามี token หรือไม่
+    if (!token) {
+      this.logger.warn('No token provided');
+      throw new UnauthorizedException('Token is required');
+    }
 
+    // 2️⃣ ดึง secret จาก config
+    const secret = this.configService.get<string>('JWT_SECRET');
+    if (!secret) {
+      this.logger.error('JWT_SECRET not set in config');
+      throw new UnauthorizedException('Server misconfiguration');
+    }
+
+    // 3️⃣ Verify token
+    let payload: TokenPayload;
     try {
-      const payload = this.jwtService.verify<TokenPayload>(token);
+      payload = jwt.verify(token, secret) as TokenPayload;
+      this.logger.debug(`Token verified successfully: ${JSON.stringify(payload)}`);
+    } catch (err) {
+      this.logger.warn(`Token verification failed: ${err.message}`);
+      throw new UnauthorizedException('Invalid or expired token');
+    }
 
-      const user = await this.prisma.user.findUnique({
-        where: { id: payload.sub },
-      });
+    // 4️⃣ ตรวจสอบ user จาก payload
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+    });
 
-      if (!user || user.status !== UserStatus.ACTIVE) {
-        this.logger.error('ผู้ใช้ไม่ใช้งานหรือไม่พบ');
-        throw new UnauthorizedException('ผู้ใช้ไม่ใช้งานหรือไม่พบ');
+    if (!user) {
+      this.logger.warn(`User not found for token sub: ${payload.sub}`);
+      throw new UnauthorizedException('Invalid token: user not found');
+    }
+
+    if (user.status !== UserStatus.ACTIVE) {
+      this.logger.warn(`User not active: ${payload.sub}, status: ${user.status}`);
+      throw new UnauthorizedException('User not active');
+    }
+
+    // 5️⃣ ถ้าผ่านทุกอย่าง ส่ง payload กลับ
+    return payload;
+  } catch (error) {
+    this.logger.error(`verifyToken error: ${error.message}`);
+    throw new UnauthorizedException(error.message);
+  }
+}
+
+
+  /**
+   * Handle WebSocket connection
+   */
+  async handleConnection(socket: Socket) {
+    try {
+      const token = socket.handshake.auth.token;
+      if (!token) {
+        throw new UnauthorizedException('No token provided');
       }
 
-      this.logger.log(`ตรวจสอบ token สำเร็จสำหรับผู้ใช้: ${payload.sub}`);
-      return payload;
+      const payload = await this.verifyToken(token);
+      socket.data.user = payload;
+      this.logger.log(`Client connected: ${socket.id}, User: ${payload.sub}`);
     } catch (error) {
-      this.logger.error(`ข้อผิดพลาดในการตรวจสอบ token: ${error.message}`, error.stack);
-      throw new UnauthorizedException('token ไม่ถูกต้อง');
+      this.logger.error(`Connection error: ${error.message}`);
+      socket.emit('error', { message: 'Authentication failed' });
+      socket.disconnect();
     }
   }
 
@@ -330,14 +367,11 @@ export class AuthService {
     this.logger.log(`รีเฟรช token ด้วย refresh token`);
 
     try {
-      // ตรวจสอบว่าเป็น refresh token จาก OAuth (Supabase) หรือจากล็อกอินปกติ
       try {
-        // ลอง verify ว่าเป็น JWT refresh token
         const payload = this.jwtService.verify<TokenPayload>(refreshToken, {
           secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
         });
 
-        // ค้นหาผู้ใช้
         const user = await this.prisma.user.findUnique({
           where: { id: payload.sub },
         });
@@ -347,7 +381,6 @@ export class AuthService {
           throw new UnauthorizedException('ไม่พบผู้ใช้หรือผู้ใช้ไม่ใช้งาน');
         }
 
-        // สร้าง access token ใหม่
         const newPayload: TokenPayload = {
           sub: user.id,
           email: user.email,
@@ -359,7 +392,6 @@ export class AuthService {
           access_token: this.jwtService.sign(newPayload),
         };
       } catch (jwtError) {
-        
         const { data, error } = await this.supabase.auth.refreshSession({
           refresh_token: refreshToken,
         });
@@ -395,43 +427,42 @@ export class AuthService {
     }
   }
 
+  async loginWithSupabaseToken(access_token: string): Promise<AuthTokens> {
+    this.logger.log(`กำลังตรวจสอบ access token จาก Supabase`);
 
-async loginWithSupabaseToken(access_token: string): Promise<AuthTokens> {
-  this.logger.log(`กำลังตรวจสอบ access token จาก Supabase`);
+    try {
+      const { data, error } = await this.supabase.auth.getUser(access_token);
 
-  try {
-    const { data, error } = await this.supabase.auth.getUser(access_token);
+      if (error || !data?.user) {
+        this.logger.error(`ไม่สามารถตรวจสอบ access token: ${error?.message}`);
+        throw new UnauthorizedException('ไม่สามารถตรวจสอบ token');
+      }
 
-    if (error || !data?.user) {
-      this.logger.error(`ไม่สามารถตรวจสอบ access token: ${error?.message}`);
-      throw new UnauthorizedException('ไม่สามารถตรวจสอบ token');
+      const supabaseUser = data.user as SupabaseUser;
+
+      const user = await this.findOrCreateUser(supabaseUser, 'supabase');
+
+      const payload: TokenPayload = {
+        sub: user.id,
+        email: user.email,
+        role: user.role.toString(),
+      };
+
+      const jwtAccessToken = this.jwtService.sign(payload);
+      const jwtRefreshToken = this.jwtService.sign(payload, {
+        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+        expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '30d'),
+      });
+
+      return {
+        access_token: jwtAccessToken,
+        refresh_token: jwtRefreshToken,
+        token_type: 'Bearer',
+        expires_in: parseInt(this.configService.get('JWT_EXPIRES_IN', '604800')),
+      };
+    } catch (error) {
+      this.logger.error(`ข้อผิดพลาดในการเข้าสู่ระบบด้วย Supabase token: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('ไม่สามารถเข้าสู่ระบบด้วย Supabase token');
     }
-
-    const supabaseUser = data.user as SupabaseUser;
-
-    const user = await this.findOrCreateUser(supabaseUser, 'supabase');
-
-    const payload: TokenPayload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role.toString(),
-    };
-
-    const jwtAccessToken = this.jwtService.sign(payload);
-    const jwtRefreshToken = this.jwtService.sign(payload, {
-      secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-      expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '30d'),
-    });
-
-    return {
-      access_token: jwtAccessToken,
-      refresh_token: jwtRefreshToken,
-      token_type: 'Bearer',
-      expires_in: parseInt(this.configService.get('JWT_EXPIRES_IN', '604800')),
-    };
-  } catch (error) {
-    this.logger.error(`ข้อผิดพลาดในการเข้าสู่ระบบด้วย Supabase token: ${error.message}`, error.stack);
-    throw new InternalServerErrorException('ไม่สามารถเข้าสู่ระบบด้วย Supabase token');
   }
-}
 }

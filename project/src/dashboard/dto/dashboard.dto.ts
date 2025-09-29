@@ -1,22 +1,15 @@
-import { IsString, IsOptional, IsDateString, IsEnum } from 'class-validator';
-
-enum ReportType {
-  DAILY = 'DAILY',
-  WEEKLY = 'WEEKLY',
-  MONTHLY = 'MONTHLY',
-  CUSTOM = 'CUSTOM',
-}
+import { IsString, IsOptional, IsNumber } from 'class-validator';
 
 export class ReportQueryDto {
-  @IsEnum(ReportType)
-  type: ReportType;
+  @IsString()
+  type: string;
 
   @IsOptional()
-  @IsDateString()
+  @IsString()
   startDate?: string;
 
   @IsOptional()
-  @IsDateString()
+  @IsString()
   endDate?: string;
 
   @IsOptional()
@@ -36,4 +29,37 @@ export class DashboardStatsResponseDto {
   averageResponseTime: number;
   activeTeams: number;
   availableHospitalBeds: number;
+}
+
+export class CreateEmergencyCaseDto {
+  @IsString()
+  title: string;
+
+  @IsString()
+  patientName: string;
+
+  @IsOptional()
+  @IsString()
+  contactNumber?: string;
+
+  @IsString()
+  emergencyType: string;
+
+  @IsString()
+  locationAddress: string;
+
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsNumber()
+  severity: number;
 }

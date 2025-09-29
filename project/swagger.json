@@ -136,6 +136,17 @@
         }
       }
     },
+    "/api/auth/verify-token": {
+      "post": {
+        "operationId": "AuthController_verifyToken",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/users": {
       "get": {
         "operationId": "UserController_findAll",
@@ -369,6 +380,16 @@
       "post": {
         "operationId": "HospitalController_create",
         "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateHospitalDto"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "description": ""
@@ -407,6 +428,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateHospitalDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": ""
@@ -415,6 +446,26 @@
       },
       "delete": {
         "operationId": "HospitalController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/hospitals/{id}/status": {
+      "put": {
+        "operationId": "HospitalController_updateStatus",
         "parameters": [
           {
             "name": "id",
@@ -622,6 +673,38 @@
           }
         }
       }
+    },
+    "/api/dashboard/create-case": {
+      "post": {
+        "operationId": "DashboardController_createCase",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEmergencyCaseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/dashboard/cancel-case": {
+      "post": {
+        "operationId": "DashboardController_cancelCase",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
     }
   },
   "info": {
@@ -643,6 +726,18 @@
         "properties": {}
       },
       "OAuthLoginDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateHospitalDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateHospitalDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateEmergencyCaseDto": {
         "type": "object",
         "properties": {}
       }
