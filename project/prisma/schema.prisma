@@ -23,7 +23,7 @@ model User {
   updatedAt         DateTime           @updatedAt
   organizationId    String?
   password          String?
-  medicalInfo       Json?
+  medicalInfo       Json? 
   emergencyRequests EmergencyRequest[] @relation("PatientRequests")
   notifications     Notification[]
   organization      Organization?      @relation(fields: [organizationId], references: [id])
@@ -47,11 +47,7 @@ model Organization {
   status             String              @default("ACTIVE")
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
-  medicalInfo        Json?
-  availableBeds      Int?                @default(0) @map("available_beds")
-  totalBeds          Int?                @default(0) // ✅ เพิ่ม
-  icuBeds            Int?                @default(0) // ✅ เพิ่ม
-  availableIcuBeds   Int?                @default(0) // ✅ เพิ่ม
+  availableBeds      Int?                @default(0)
   emergencyResponses EmergencyResponse[]
   users              User[]
 
@@ -59,10 +55,9 @@ model Organization {
   @@schema("emergency_project")
 }
 
-
 model EmergencyRequest {
   id          String              @id @default(uuid())
-  status      EmergencyStatus     @default(PENDING)
+  status      String
   description String
   location    String?
   latitude    Float?
@@ -71,9 +66,6 @@ model EmergencyRequest {
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
   patientId   String
-  type        EmergencyType       @default(OTHER)
-  notes       String?
-  updatedBy   String?
   patient     User                @relation("PatientRequests", fields: [patientId], references: [id])
   responses   EmergencyResponse[]
 
@@ -109,29 +101,10 @@ model Notification {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   userId    String
+  read      Boolean  @default(false)
   user      User     @relation(fields: [userId], references: [id])
 
   @@map("notifications")
-  @@schema("emergency_project")
-}
-
-enum EmergencyStatus {
-  PENDING
-  ASSIGNED
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-
-  @@schema("emergency_project")
-}
-
-enum EmergencyType {
-  ACCIDENT
-  MEDICAL
-  FIRE
-  CRIME
-  OTHER
-
   @@schema("emergency_project")
 }
 

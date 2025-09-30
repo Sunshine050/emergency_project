@@ -1,14 +1,14 @@
-import { NestFactory, INestApplication } from '@nestjs/core';
+import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { RedocModule, RedocOptions } from 'nestjs-redoc';
 import * as cookieParser from 'cookie-parser';
+import { NestExpressApplication } from '@nestjs/platform-express'; // ใช้ตัวนี้แทน INestApplication
 
 async function bootstrap() {
-  const app: INestApplication = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.useLogger(['log', 'error', 'warn', 'debug', 'verbose']);
   const configService = app.get(ConfigService);
 
@@ -33,12 +33,13 @@ async function bootstrap() {
 
   // ตั้งค่า WebSocket adapter
   class CustomIoAdapter extends IoAdapter {
-    constructor(app: INestApplication) {
+    constructor(app: NestExpressApplication) {
       super(app);
     }
   }
   app.useWebSocketAdapter(new CustomIoAdapter(app));
 
+  // Swagger configuration
   const config = new DocumentBuilder()
     .setTitle('Emergency Project API')
     .setDescription('API documentation for Emergency Project')
@@ -48,23 +49,11 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-  const redocOptions: RedocOptions = {
-    title: 'Emergency Project API',
-    logo: {
-      url: 'https://example.com/logo.png',
-    },
-    sortPropsAlphabetically: true,
-    hideDownloadButton: false,
-    hideHostname: false,
-  };
-  await RedocModule.setup('docs', app, document, redocOptions);
-
   const port = configService.get('PORT') || 3001;
   await app.listen(port);
 
   console.log(`Application is running on: http://localhost:${port}`);
   console.log(`Swagger UI is available at: http://localhost:${port}/api`);
-  console.log(`Redoc UI is available at: http://localhost:${port}/docs`);
   console.log(`CORS configured for: ${clientUrl}`);
 }
 
