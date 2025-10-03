@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  Logger,
+  BadRequestException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmergencyStatus } from '../sos/dto/sos.dto';
 import { AssignCaseDto, CancelCaseDto } from './dto/dashboard.dto';
@@ -6,12 +12,13 @@ import { NotificationGateway } from '../notification/notification.gateway';
 
 interface HospitalMedicalInfo {
   availableBeds?: number;
+  [key: string]: any;
 }
 
 interface OrganizationWithMedicalInfo {
   id: string;
   name: string;
-  medicalInfo?: HospitalMedicalInfo;
+  medicalInfo?: unknown;
 }
 
 @Injectable()
@@ -23,17 +30,63 @@ export class DashboardService {
     private notificationGateway: NotificationGateway, // Inject NotificationGateway
   ) {}
 
+  /**
+   * Helper: safely read severity from medicalInfo which may be object or JSON string
+   */
+  private getSeverity(medicalInfo: any): number | null {
+    if (!medicalInfo) return null;
+    try {
+      if (typeof medicalInfo === 'object') {
+        return typeof medicalInfo.severity === 'number'
+          ? medicalInfo.severity
+          : medicalInfo.severity !== undefined
+          ? Number(medicalInfo.severity)
+          : null;
+      }
+      if (typeof medicalInfo === 'string') {
+        const parsed = JSON.parse(medicalInfo);
+        return parsed && parsed.severity !== undefined ? Number(parsed.severity) : null;
+      }
+    } catch (err) {
+      this.logger.debug(`Failed to parse medicalInfo for severity: ${err?.message ?? err}`);
+      return null;
+    }
+    return null;
+  }
+
+  /**
+   * Helper: safely extract availableBeds from hospital.medicalInfo
+   */
+  private getAvailableBeds(medicalInfo: any): number | null {
+    if (!medicalInfo) return null;
+    try {
+      if (typeof medicalInfo === 'object') {
+        const beds = medicalInfo.availableBeds ?? medicalInfo.available_beds;
+        return typeof beds === 'number' ? beds : beds ? Number(beds) : null;
+      }
+      if (typeof medicalInfo === 'string') {
+        const parsed = JSON.parse(medicalInfo);
+        const beds = parsed?.availableBeds ?? parsed?.available_beds;
+        return typeof beds === 'number' ? beds : beds ? Number(beds) : null;
+      }
+    } catch (err) {
+      this.logger.debug(`Failed to parse medicalInfo for beds: ${err?.message ?? err}`);
+      return null;
+    }
+    return null;
+  }
+
   async getStats() {
     this.logger.log('Fetching dashboard statistics');
 
     try {
+      // Basic counts (DB-side)
       const [
         totalEmergencies,
         activeEmergencies,
         completedEmergencies,
         activeTeams,
-        hospitals,
-        criticalCases,
+        connectedHospitalsCount,
         cancelledEmergencies,
         responseTimes,
         hospitalCapacities,
@@ -60,11 +113,9 @@ export class DashboardService {
           where: { type: 'HOSPITAL', status: 'ACTIVE' },
         }),
         this.prisma.emergencyRequest.count({
-          where: { medicalInfo: { path: ['severity'], equals: 4 } },
-        }),
-        this.prisma.emergencyRequest.count({
           where: { status: EmergencyStatus.CANCELLED },
         }),
+        // response times - we will filter in JS to be safe
         this.prisma.emergencyResponse.findMany({
           where: { status: 'COMPLETED' },
           select: {
@@ -72,34 +123,52 @@ export class DashboardService {
             completionTime: true,
           },
         }),
+        // hospitals with medicalInfo (may be JSON object or string)
         this.prisma.organization.findMany({
           where: { type: 'HOSPITAL', status: 'ACTIVE' },
           select: {
             id: true,
             name: true,
-            medicalInfo: true,
+            // medicalInfo: true,
           },
         }),
       ]);
 
+      // Compute criticalCases by loading medicalInfo and filtering in JS.
+      // Prisma JSON filtering varies by DB and Prisma version; safer to handle in JS.
+      const emergenciesWithMedical = await this.prisma.emergencyRequest.findMany({
+        select: { medicalInfo: true },
+      });
+
+      const criticalCases = emergenciesWithMedical.reduce((acc, e) => {
+        const sev = this.getSeverity(e.medicalInfo);
+        return acc + (sev === 4 ? 1 : 0);
+      }, 0);
+
+      // Compute average response time (in minutes) using only responses with both times
       let averageResponseTime = 0;
-      if (responseTimes.length > 0) {
-        const totalResponseTime = responseTimes.reduce((sum, response) => {
-          if (response.dispatchTime && response.completionTime) {
+      if (responseTimes && responseTimes.length > 0) {
+        let totalMinutes = 0;
+        let validCount = 0;
+        for (const r of responseTimes) {
+          if (r.dispatchTime && r.completionTime) {
             const diffMs =
-              new Date(response.completionTime).getTime() -
-              new Date(response.dispatchTime).getTime();
-            return sum + diffMs / (1000 * 60);
+              new Date(r.completionTime).getTime() - new Date(r.dispatchTime).getTime();
+            if (!Number.isNaN(diffMs)) {
+              totalMinutes += diffMs / (1000 * 60);
+              validCount += 1;
+            }
           }
-          return sum;
-        }, 0);
-        averageResponseTime = totalResponseTime / responseTimes.length;
+        }
+        if (validCount > 0) averageResponseTime = totalMinutes / validCount;
       }
 
+      // Sum available beds safely
       let availableHospitalBeds = 0;
       (hospitalCapacities as OrganizationWithMedicalInfo[]).forEach((hospital) => {
-        if (hospital.medicalInfo && typeof (hospital.medicalInfo as HospitalMedicalInfo).availableBeds === 'number') {
-          availableHospitalBeds += (hospital.medicalInfo as HospitalMedicalInfo).availableBeds;
+        const beds = this.getAvailableBeds((hospital as any).medicalInfo);
+        if (typeof beds === 'number' && !Number.isNaN(beds)) {
+          availableHospitalBeds += beds;
         }
       });
 
@@ -108,7 +177,7 @@ export class DashboardService {
         activeEmergencies,
         completedEmergencies,
         activeTeams,
-        connectedHospitals: hospitals,
+        connectedHospitals: connectedHospitalsCount,
         criticalCases,
         averageResponseTime: Number(averageResponseTime.toFixed(2)),
         availableHospitalBeds,
@@ -118,8 +187,9 @@ export class DashboardService {
       this.logger.log(`Dashboard stats fetched: ${JSON.stringify(stats)}`);
       return stats;
     } catch (error) {
-      this.logger.error(`Failed to fetch dashboard stats: ${error.message}`, error.stack);
-      throw new Error(`Cannot fetch dashboard stats: ${error.message}`);
+      // Log full error and throw a controlled Nest exception so controller returns 500 cleanly
+      this.logger.error(`Failed to fetch dashboard stats: ${error?.message ?? error}`, error?.stack);
+      throw new InternalServerErrorException(`Cannot fetch dashboard stats: ${error?.message ?? 'Internal error'}`);
     }
   }
 
@@ -158,8 +228,8 @@ export class DashboardService {
       this.logger.log(`Found ${emergencies.length} active emergencies`);
       return emergencies;
     } catch (error) {
-      this.logger.error(`Failed to fetch active emergencies: ${error.message}`, error.stack);
-      throw new Error(`Cannot fetch active emergencies: ${error.message}`);
+      this.logger.error(`Failed to fetch active emergencies: ${error?.message ?? error}`, error?.stack);
+      throw new InternalServerErrorException(`Cannot fetch active emergencies: ${error?.message ?? 'Internal error'}`);
     }
   }
 
@@ -175,15 +245,15 @@ export class DashboardService {
           latitude: true,
           longitude: true,
           status: true,
-          medicalInfo: true,
+          // medicalInfo: true,
         },
       });
 
       this.logger.log(`Found ${teams.length} active rescue teams`);
       return teams;
     } catch (error) {
-      this.logger.error(`Failed to fetch team locations: ${error.message}`, error.stack);
-      throw new Error(`Cannot fetch team locations: ${error.message}`);
+      this.logger.error(`Failed to fetch team locations: ${error?.message ?? error}`, error?.stack);
+      throw new InternalServerErrorException(`Cannot fetch team locations: ${error?.message ?? 'Internal error'}`);
     }
   }
 
@@ -196,15 +266,15 @@ export class DashboardService {
         select: {
           id: true,
           name: true,
-          medicalInfo: true,
+          // medicalInfo: true,
         },
       });
 
       this.logger.log(`Found ${hospitals.length} active hospitals`);
       return hospitals;
     } catch (error) {
-      this.logger.error(`Failed to fetch hospital capacities: ${error.message}`, error.stack);
-      throw new Error(`Cannot fetch hospital capacities: ${error.message}`);
+      this.logger.error(`Failed to fetch hospital capacities: ${error?.message ?? error}`, error?.stack);
+      throw new InternalServerErrorException(`Cannot fetch hospital capacities: ${error?.message ?? 'Internal error'}`);
     }
   }
 
@@ -259,7 +329,7 @@ export class DashboardService {
       this.logger.log(`Case ${caseId} assigned to ${assignedToId}`);
       return updatedEmergency;
     } catch (error) {
-      this.logger.error(`Failed to assign case ${caseId}: ${error.message}`, error.stack);
+      this.logger.error(`Failed to assign case ${caseId}: ${error?.message ?? error}`, error?.stack);
       throw error;
     }
   }
@@ -294,12 +364,17 @@ export class DashboardService {
       });
 
       // ส่ง event stats-updated หลังจากยกเลิกเคส
-      await this.notificationGateway.broadcastStatsUpdated();
+      try {
+        await this.notificationGateway.broadcastStatsUpdated();
+      } catch (gwErr) {
+        this.logger.warn(`Failed to broadcast stats update: ${gwErr?.message ?? gwErr}`);
+        // don't fail entire request because notification broadcasting failed
+      }
 
       this.logger.log(`Case ${caseId} cancelled`);
       return updatedEmergency;
     } catch (error) {
-      this.logger.error(`Failed to cancel case ${caseId}: ${error.message}`, error.stack);
+      this.logger.error(`Failed to cancel case ${caseId}: ${error?.message ?? error}`, error?.stack);
       throw error;
     }
   }

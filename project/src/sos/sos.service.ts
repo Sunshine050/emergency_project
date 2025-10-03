@@ -117,7 +117,7 @@ export class SosService {
         where: { id: emergencyId },
         data: {
           status: EmergencyStatus.ASSIGNED,
-          updatedBy: userId,
+          updatedBy: userId,    
         },
         include: {
           patient: true,

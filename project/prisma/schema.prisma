@@ -45,6 +45,7 @@ model Organization {
   contactPhone       String
   contactEmail       String?
   status             String              @default("ACTIVE")
+  medicalInfo        Json?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   availableBeds      Int?                @default(0)
@@ -58,6 +59,7 @@ model Organization {
 model EmergencyRequest {
   id          String              @id @default(uuid())
   status      String
+  type        String
   description String
   location    String?
   latitude    Float?
