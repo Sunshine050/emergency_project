@@ -66,6 +66,7 @@ model EmergencyRequest {
   longitude   Float?
   medicalInfo Json?
   createdAt   DateTime            @default(now())
+  updatedBy   String?
   updatedAt   DateTime            @updatedAt
   patientId   String
   patient     User                @relation("PatientRequests", fields: [patientId], references: [id])
