@@ -29,14 +29,14 @@ export class HospitalController {
   }
 
   @Get()
-  @Roles(UserRole.ADMIN, UserRole.HOSPITAL)
+  @Roles(UserRole.ADMIN, UserRole.HOSPITAL, UserRole.EMERGENCY_CENTER)
   findAll(@Query("search") search?: string) {
     this.logger.log(`GET /hospitals called with search: ${search}`);
     return this.hospitalService.findAll(search);
   }
 
   @Get(":id")
-  @Roles(UserRole.ADMIN, UserRole.HOSPITAL)
+  @Roles(UserRole.ADMIN, UserRole.HOSPITAL, UserRole.EMERGENCY_CENTER)
   findOne(@Param("id") id: string) {
     this.logger.log(`GET /hospitals/${id} called`);
     return this.hospitalService.findOne(id);
@@ -77,7 +77,7 @@ export class HospitalController {
   }
 
   @Get("nearby/:latitude/:longitude")
-  @Roles(UserRole.ADMIN, UserRole.HOSPITAL)
+  @Roles(UserRole.ADMIN, UserRole.HOSPITAL, UserRole.EMERGENCY_CENTER)
   findNearbyHospitals(
     @Param("latitude") latitude: number,
     @Param("longitude") longitude: number,
