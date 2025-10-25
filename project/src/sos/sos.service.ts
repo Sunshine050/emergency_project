@@ -41,12 +41,14 @@ export class SosService {
         latitude: createSosDto.latitude,
         longitude: createSosDto.longitude,
         medicalInfo,
-        patientId,
+        sosType: 'SOME_VALUE',
+        patient: { connect: { id: patientId } },
       },
       include: {
         patient: true,
       },
     });
+    console.log(`Patient name: ${emergencyRequest.patient.firstName} ${emergencyRequest.patient.lastName}`);
 
     const responders = await this.prisma.user.findMany({
       where: {

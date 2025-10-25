@@ -46,15 +46,20 @@ async function bootstrap() {
     .setVersion('1.0')
     .addBearerAuth()
     .build();
+
   const document = SwaggerModule.createDocument(app, config);
+
+  // ❌ ไม่เขียนไฟล์ swagger.json ที่นี่ (ป้องกัน loop ใน dev)
+  // หากต้องการ export ให้ใช้ export-swagger.ts
+
   SwaggerModule.setup('api', app, document);
 
   const port = configService.get('PORT') || 3001;
   await app.listen(port);
 
-  console.log(`Application is running on: http://localhost:${port}`);
-  console.log(`Swagger UI is available at: http://localhost:${port}/api`);
-  console.log(`CORS configured for: ${clientUrl}`);
+  console.log(`🚀 Application is running on: http://localhost:${port}`);
+  console.log(`📘 Swagger UI is available at: http://localhost:${port}/api`);
+  console.log(`🌐 CORS configured for: ${clientUrl}`);
 }
 
 bootstrap();
