@@ -41,7 +41,6 @@ export class SosService {
         latitude: createSosDto.latitude,
         longitude: createSosDto.longitude,
         medicalInfo,
-        sosType: 'SOME_VALUE',
         patient: { connect: { id: patientId } },
       },
       include: {
