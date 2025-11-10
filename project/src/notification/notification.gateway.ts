@@ -194,10 +194,10 @@ export class NotificationGateway implements OnGatewayInit, OnGatewayConnection, 
       .to('role:EMERGENCY_CENTER')
       .to('role:HOSPITAL')
       .to('role:RESCUE_TEAM')
-      .emit('status-update', payload);
+      .emit('statusUpdate', payload);
 
     if (data.assignedTo) {
-      this.sendToUser(data.assignedTo, 'status-update', payload);
+      this.sendToUser(data.assignedTo, 'statusUpdate', payload);
     }
 
     // ส่ง event stats-updated หลังจากสถานะเปลี่ยน
@@ -221,6 +221,26 @@ export class NotificationGateway implements OnGatewayInit, OnGatewayConnection, 
       .emit('hospital-created', payload);
 
     // ส่ง event stats-updated หลังจากสร้างโรงพยาบาลใหม่
+    this.broadcastStatsUpdated();
+
+    setTimeout(() => this.broadcastLocks.delete(lockKey), 1000);
+  }
+
+  broadcastHospitalUpdate(data: { hospitalId: string; availableBeds: number }) {
+    const payload = {
+      hospitalId: data.hospitalId,
+      availableBeds: data.availableBeds,
+    };
+    const lockKey = `hospitalUpdate:${data.hospitalId}`;
+    if (this.broadcastLocks.has(lockKey)) return;
+    this.broadcastLocks.add(lockKey);
+
+    this.logger.log(`Broadcasting hospitalUpdate event: ${JSON.stringify(payload)}`);
+    this.server
+      .to('role:EMERGENCY_CENTER')
+      .emit('hospitalUpdate', payload);
+
+    // ส่ง event stats-updated หลังจากจำนวนเตียงเปลี่ยน
     this.broadcastStatsUpdated();
 
     setTimeout(() => this.broadcastLocks.delete(lockKey), 1000);
@@ -289,11 +309,14 @@ export class NotificationGateway implements OnGatewayInit, OnGatewayConnection, 
         },
       }),
       this.prisma.organization.findMany({
-        where: { type: 'HOSPITAL', status: 'ACTIVE' },
+        where: { 
+          type: 'HOSPITAL',
+          status: 'ACTIVE'
+        },
         select: {
           id: true,
           name: true,
-          medicalInfo: true,
+          availableBeds: true,
         },
       }),
     ]);
@@ -314,8 +337,8 @@ export class NotificationGateway implements OnGatewayInit, OnGatewayConnection, 
 
     let availableHospitalBeds = 0;
     hospitalCapacities.forEach((hospital: any) => {
-      if (hospital.medicalInfo && typeof hospital.medicalInfo.availableBeds === 'number') {
-        availableHospitalBeds += hospital.medicalInfo.availableBeds;
+      if (hospital.availableBeds !== null && typeof hospital.availableBeds === 'number') {
+        availableHospitalBeds += hospital.availableBeds;
       }
     });
 

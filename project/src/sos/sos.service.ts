@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationService } from "../notification/notification.service";
 import { NotificationGateway } from "../notification/notification.gateway";
@@ -18,18 +18,14 @@ export class SosService {
     private notificationGateway: NotificationGateway,
   ) {}
 
-  async createEmergencyRequest(
-    createSosDto: CreateEmergencyRequestDto,
-    userId: string,
-  ) {
+  async createEmergencyRequest(createSosDto: CreateEmergencyRequestDto, userId: string) {
     const patientId = createSosDto.patientId || userId;
-    console.log("Creating emergency with type:", createSosDto.type, "for patientId:", patientId);
 
     const medicalInfo = {
       ...(createSosDto.medicalInfo || {}),
       grade: createSosDto.grade,
       severity: createSosDto.grade === "CRITICAL" ? 5 : createSosDto.grade === "URGENT" ? 3 : 1,
-      emergencyType: createSosDto.type, // เพิ่ม emergencyType ใน medicalInfo
+      emergencyType: createSosDto.type,
     };
 
     const emergencyRequest = await this.prisma.emergencyRequest.create({
@@ -43,21 +39,12 @@ export class SosService {
         medicalInfo,
         patient: { connect: { id: patientId } },
       },
-      include: {
-        patient: true,
-      },
+      include: { patient: true },
     });
-    console.log(`Patient name: ${emergencyRequest.patient.firstName} ${emergencyRequest.patient.lastName}`);
 
     const responders = await this.prisma.user.findMany({
       where: {
-        role: {
-          in: [
-            UserRole.EMERGENCY_CENTER,
-            UserRole.HOSPITAL,
-            UserRole.RESCUE_TEAM
-          ],
-        },
+        role: { in: [UserRole.EMERGENCY_CENTER, UserRole.HOSPITAL, UserRole.RESCUE_TEAM] },
         status: "ACTIVE",
       },
     });
@@ -94,57 +81,47 @@ export class SosService {
 
   async assignToHospital(emergencyId: string, hospitalId: string, userId: string) {
     const updatedEmergency = await this.prisma.$transaction(async (prisma) => {
+      // ตรวจสอบ emergency
       const emergency = await prisma.emergencyRequest.findUnique({
         where: { id: emergencyId },
-        include: {
-          patient: true,
-          responses: {
-            include: {
-              organization: true,
-            },
-          },
-        },
+        include: { patient: true, responses: { include: { organization: true } } },
       });
 
-      if (!emergency) {
-        throw new NotFoundException("Emergency request not found");
-      }
+      if (!emergency) throw new NotFoundException("Emergency request not found");
+      if (emergency.status !== EmergencyStatus.PENDING)
+        throw new BadRequestException("Only PENDING cases can be assigned");
 
-      if (emergency.status !== EmergencyStatus.PENDING) {
-        throw new NotFoundException("Only PENDING cases can be assigned");
-      }
+      // ตรวจสอบ hospital
+      const hospital = await prisma.organization.findUnique({ 
+        where: { 
+          id: hospitalId,
+        }
+      });
+      if (!hospital || hospital.type !== 'HOSPITAL') throw new NotFoundException("Hospital not found");
+      if (hospital.availableBeds === null || hospital.availableBeds <= 0)
+        throw new BadRequestException("No available beds in the selected hospital");
 
+      // อัปเดต emergency
       const updated = await prisma.emergencyRequest.update({
         where: { id: emergencyId },
-        data: {
-          status: EmergencyStatus.ASSIGNED,
-          updatedBy: userId,    
-        },
-        include: {
-          patient: true,
-          responses: {
-            include: {
-              organization: true,
-            },
-          },
-        },
+        data: { status: EmergencyStatus.ASSIGNED, updatedBy: userId },
+        include: { patient: true, responses: { include: { organization: true } } },
       });
 
+      // สร้าง response
       await prisma.emergencyResponse.create({
-        data: {
-          emergencyRequestId: emergencyId,
-          organizationId: hospitalId,
-          status: "ASSIGNED",
-          createdAt: new Date(),
-        },
+        data: { emergencyRequestId: emergencyId, organizationId: hospitalId, status: "ASSIGNED", createdAt: new Date() },
       });
 
+      // ลดจำนวนเตียง
+      const updatedHospital = await prisma.organization.update({
+        where: { id: hospitalId },
+        data: { availableBeds: { decrement: 1 }, updatedAt: new Date() },
+      });
+
+      // แจ้งผู้ใช้โรงพยาบาล
       const hospitalUsers = await prisma.user.findMany({
-        where: {
-          organizationId: hospitalId,
-          role: UserRole.HOSPITAL,
-          status: "ACTIVE",
-        },
+        where: { organizationId: hospitalId, role: UserRole.HOSPITAL, status: "ACTIVE" },
       });
 
       for (const user of hospitalUsers) {
@@ -153,23 +130,23 @@ export class SosService {
           title: "New Emergency Assignment",
           body: `You have been assigned to emergency case ${emergencyId} (${emergency.type})`,
           userId: user.id,
-          metadata: {
-            emergencyId: emergencyId,
-            status: EmergencyStatus.ASSIGNED,
-            patientName: `${emergency.patient.firstName} ${emergency.patient.lastName}`,
-          },
+          metadata: { emergencyId, status: EmergencyStatus.ASSIGNED, patientName: `${emergency.patient.firstName} ${emergency.patient.lastName}` },
         });
       }
 
+      // แจ้งผู้ป่วย
       await this.notificationService.createNotification({
         type: "STATUS_UPDATE",
         title: "Emergency Status Update",
-        body: `Your emergency request has been assigned to a hospital`,
+        body: `Your emergency request has been assigned to ${hospital.name}`,
         userId: emergency.patientId,
-        metadata: {
-          emergencyId: emergencyId,
-          status: EmergencyStatus.ASSIGNED,
-        },
+        metadata: { emergencyId, status: EmergencyStatus.ASSIGNED, hospitalName: hospital.name },
+      });
+
+      // Broadcast
+      this.notificationGateway.broadcastHospitalUpdate({
+        hospitalId,
+        availableBeds: updatedHospital.availableBeds,
       });
 
       return updated;
@@ -187,59 +164,27 @@ export class SosService {
     const updatedEmergency = await this.prisma.$transaction(async (prisma) => {
       const emergency = await prisma.emergencyRequest.findUnique({
         where: { id },
-        include: {
-          patient: true,
-          responses: {
-            include: {
-              organization: {
-                include: {
-                  users: true,
-                },
-              },
-            },
-          },
-        },
+        include: { patient: true, responses: { include: { organization: { include: { users: true } } } } },
       });
 
-      if (!emergency) {
-        throw new NotFoundException("Emergency request not found");
-      }
-
-      console.log("Before update - Emergency:", emergency);
+      if (!emergency) throw new NotFoundException("Emergency request not found");
 
       const updated = await prisma.emergencyRequest.update({
         where: { id },
-        data: {
-          status: updateStatusDto.status,
-        },
-        include: {
-          patient: true,
-          responses: {
-            include: {
-              organization: {
-                include: {
-                  users: true,
-                },
-              },
-            },
-          },
-        },
+        data: { status: updateStatusDto.status },
+        include: { patient: true, responses: { include: { organization: { include: { users: true } } } } },
       });
 
-      console.log("After update - Updated emergency:", updated);
-
+      // แจ้งผู้ป่วย
       await this.notificationService.createNotification({
         type: "STATUS_UPDATE",
         title: "Emergency Status Update",
         body: `Your emergency request status has been updated to ${updateStatusDto.status}`,
         userId: emergency.patientId,
-        metadata: {
-          emergencyId: emergency.id,
-          status: updateStatusDto.status,
-          notes: updateStatusDto.notes,
-        },
+        metadata: { emergencyId: emergency.id, status: updateStatusDto.status, notes: updateStatusDto.notes },
       });
 
+      // แจ้งผู้ใช้ทุก response
       for (const response of emergency.responses) {
         for (const user of response.organization.users) {
           await this.notificationService.createNotification({
@@ -247,11 +192,7 @@ export class SosService {
             title: "Emergency Status Update",
             body: `Emergency request ${emergency.id} status updated to ${updateStatusDto.status}`,
             userId: user.id,
-            metadata: {
-              emergencyId: emergency.id,
-              status: updateStatusDto.status,
-              notes: updateStatusDto.notes,
-            },
+            metadata: { emergencyId: emergency.id, status: updateStatusDto.status, notes: updateStatusDto.notes },
           });
         }
       }
@@ -259,32 +200,19 @@ export class SosService {
       return updated;
     });
 
-    this.notificationGateway.broadcastStatusUpdate({
-      emergencyId: updatedEmergency.id,
-      status: updatedEmergency.status,
-    });
+    this.notificationGateway.broadcastStatusUpdate({ emergencyId: updatedEmergency.id, status: updatedEmergency.status });
 
     return updatedEmergency;
   }
 
   async getEmergencyRequests(userId: string) {
     const emergencyRequests = await this.prisma.emergencyRequest.findMany({
-      where: {
-        patientId: userId,
-      },
-      include: {
-        patient: true,
-        responses: {
-          include: {
-            organization: true,
-          },
-        },
-      },
+      where: { patientId: userId },
+      include: { patient: true, responses: { include: { organization: true } } },
     });
 
-    if (!emergencyRequests || emergencyRequests.length === 0) {
+    if (!emergencyRequests || emergencyRequests.length === 0)
       throw new NotFoundException("No emergency requests found for this user");
-    }
 
     return emergencyRequests.map((request) => ({
       ...request,
@@ -296,57 +224,22 @@ export class SosService {
   async getEmergencyRequestById(id: string, userId: string) {
     const emergencyRequest = await this.prisma.emergencyRequest.findUnique({
       where: { id },
-      select: {
-        id: true,
-        status: true,
-        type: true,
-        description: true,
-        location: true,
-        latitude: true,
-        longitude: true,
-        medicalInfo: true,
-        patientId: true,
-        patient: true,
-        responses: {
-          include: {
-            organization: true,
-          },
-        },
-      },
+      select: { id: true, status: true, type: true, description: true, location: true, latitude: true, longitude: true, medicalInfo: true, patientId: true, patient: true, responses: { include: { organization: true } } },
     });
 
-    console.log("Fetched emergency request:", emergencyRequest);
-
-    if (!emergencyRequest) {
+    if (!emergencyRequest || emergencyRequest.patientId !== userId)
       throw new NotFoundException("Emergency request not found");
-    }
 
-    if (emergencyRequest.patientId !== userId) {
-      throw new NotFoundException("Emergency request not found");
-    }
-
-    return {
-      ...emergencyRequest,
-      emergencyType: emergencyRequest.type,
-      medicalInfo: emergencyRequest.medicalInfo || { grade: "NON_URGENT", severity: 1 },
-    };
+    return { ...emergencyRequest, emergencyType: emergencyRequest.type, medicalInfo: emergencyRequest.medicalInfo || { grade: "NON_URGENT", severity: 1 } };
   }
 
   async getAllEmergencyRequests() {
     const emergencyRequests = await this.prisma.emergencyRequest.findMany({
-      include: {
-        patient: true,
-        responses: {
-          include: {
-            organization: true,
-          },
-        },
-      },
+      include: { patient: true, responses: { include: { organization: true } } },
     });
 
-    if (!emergencyRequests || emergencyRequests.length === 0) {
+    if (!emergencyRequests || emergencyRequests.length === 0)
       throw new NotFoundException("No emergency requests found");
-    }
 
     return emergencyRequests.map((request) => ({
       ...request,

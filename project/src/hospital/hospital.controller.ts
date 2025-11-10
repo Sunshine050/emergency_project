@@ -21,7 +21,7 @@ export class HospitalController {
   }
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN,UserRole.HOSPITAL)
   async create(@Body() createHospitalDto: CreateHospitalDto) {
     this.logger.log("POST /hospitals called");
     const hospital = await this.hospitalService.create(createHospitalDto);

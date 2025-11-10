@@ -1,7 +1,4 @@
 -- CreateEnum
-CREATE TYPE "emergency_project"."EmergencyStatus" AS ENUM ('PENDING', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED');
-
--- CreateEnum
 CREATE TYPE "emergency_project"."UserRole" AS ENUM ('PATIENT', 'EMERGENCY_CENTER', 'HOSPITAL', 'RESCUE_TEAM', 'ADMIN');
 
 -- CreateEnum
@@ -41,9 +38,10 @@ CREATE TABLE "emergency_project"."organizations" (
     "contactPhone" TEXT NOT NULL,
     "contactEmail" TEXT,
     "status" TEXT NOT NULL DEFAULT 'ACTIVE',
+    "medicalInfo" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-    "medicalInfo" JSONB,
+    "availableBeds" INTEGER DEFAULT 0,
 
     CONSTRAINT "organizations_pkey" PRIMARY KEY ("id")
 );
@@ -51,13 +49,15 @@ CREATE TABLE "emergency_project"."organizations" (
 -- CreateTable
 CREATE TABLE "emergency_project"."emergency_requests" (
     "id" TEXT NOT NULL,
-    "status" "emergency_project"."EmergencyStatus" NOT NULL DEFAULT 'PENDING',
+    "status" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
     "description" TEXT NOT NULL,
     "location" TEXT,
     "latitude" DOUBLE PRECISION,
     "longitude" DOUBLE PRECISION,
     "medicalInfo" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedBy" TEXT,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "patientId" TEXT NOT NULL,
 
@@ -91,6 +91,7 @@ CREATE TABLE "emergency_project"."notifications" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "userId" TEXT NOT NULL,
+    "read" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "notifications_pkey" PRIMARY KEY ("id")
 );
