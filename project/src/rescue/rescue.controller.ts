@@ -3,7 +3,6 @@ import {
   Get,
   Post,
   Put,
-  Delete,
   Param,
   Body,
   Query,
@@ -26,13 +25,13 @@ export class RescueController {
   constructor(private readonly rescueService: RescueService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.RESCUE_TEAM)
   create(@Body() createRescueTeamDto: CreateRescueTeamDto) {
     return this.rescueService.create(createRescueTeamDto);
   }
 
   @Get()
-  @Roles(UserRole.ADMIN, UserRole.EMERGENCY_CENTER)
+  @Roles(UserRole.ADMIN, UserRole.EMERGENCY_CENTER, UserRole.HOSPITAL)  // เพิ่ม UserRole.HOSPITAL ตรงนี้
   findAll(@Query("search") search?: string) {
     return this.rescueService.findAll(search);
   }

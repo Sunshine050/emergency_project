@@ -6,7 +6,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { AssignCaseDto, CancelCaseDto } from './dto/dashboard.dto';
 
-@Controller('dashboard')
+@Controller('rescue/dashboard')  // <-- เปลี่ยนตรงนี้ เพื่อให้ path เป็น /rescue/dashboard/*
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN, UserRole.EMERGENCY_CENTER)
 export class DashboardController {

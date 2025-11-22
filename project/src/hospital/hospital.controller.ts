@@ -1,4 +1,6 @@
-import { Controller, Get, Post, Put, Patch, Delete, Param, Body, UseGuards, Query, Logger } from "@nestjs/common";
+import { 
+  Controller, Get, Post, Put, Patch, Delete, Param, Body, UseGuards, Query, Logger 
+} from "@nestjs/common";
 import { HospitalService } from "./hospital.service";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
@@ -21,7 +23,7 @@ export class HospitalController {
   }
 
   @Post()
-  @Roles(UserRole.ADMIN,UserRole.HOSPITAL)
+  @Roles(UserRole.ADMIN, UserRole.HOSPITAL)
   async create(@Body() createHospitalDto: CreateHospitalDto) {
     this.logger.log("POST /hospitals called");
     const hospital = await this.hospitalService.create(createHospitalDto);
@@ -29,14 +31,24 @@ export class HospitalController {
   }
 
   @Get()
-  @Roles(UserRole.ADMIN, UserRole.HOSPITAL, UserRole.EMERGENCY_CENTER)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.HOSPITAL,
+    UserRole.EMERGENCY_CENTER,
+    UserRole.RESCUE_TEAM
+  ) // เพิ่ม UserRole.RESCUE เพื่อ allow rescue team เข้าถึง list hospitals
   findAll(@Query("search") search?: string) {
     this.logger.log(`GET /hospitals called with search: ${search}`);
     return this.hospitalService.findAll(search);
   }
 
   @Get(":id")
-  @Roles(UserRole.ADMIN, UserRole.HOSPITAL, UserRole.EMERGENCY_CENTER)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.HOSPITAL,
+    UserRole.EMERGENCY_CENTER,
+    UserRole.RESCUE_TEAM
+  ) // เพิ่ม UserRole.RESCUE
   findOne(@Param("id") id: string) {
     this.logger.log(`GET /hospitals/${id} called`);
     return this.hospitalService.findOne(id);
@@ -77,7 +89,12 @@ export class HospitalController {
   }
 
   @Get("nearby/:latitude/:longitude")
-  @Roles(UserRole.ADMIN, UserRole.HOSPITAL, UserRole.EMERGENCY_CENTER)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.HOSPITAL,
+    UserRole.EMERGENCY_CENTER,
+    UserRole.RESCUE_TEAM
+  ) // เพิ่ม UserRole.RESCUE
   findNearbyHospitals(
     @Param("latitude") latitude: number,
     @Param("longitude") longitude: number,
@@ -112,7 +129,7 @@ export class HospitalController {
     return this.hospitalService.getEmergencyResponse(responseId);
   }
 
-  // เพิ่ม endpoint ใหม่: PATCH /hospitals/emergency-responses/:id/status
+  // PATCH /hospitals/emergency-responses/:id/status
   @Patch("emergency-responses/:id/status")
   @Roles(UserRole.HOSPITAL)
   async updateEmergencyResponseStatusManual(
