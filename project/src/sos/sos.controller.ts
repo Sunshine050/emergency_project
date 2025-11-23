@@ -3,7 +3,7 @@ import { SosService } from "./sos.service";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
-import { CurrentUser } from "../auth/decorators/current-user.decorator";
+import { GetUser } from "../auth/decorators/get-user.decorator";
 import { UserRole } from "@prisma/client";
 import {
   CreateEmergencyRequestDto,
@@ -19,7 +19,7 @@ export class SosController {
   @Roles(UserRole.PATIENT, UserRole.EMERGENCY_CENTER)
   createEmergencyRequest(
     @Body() createSosDto: CreateEmergencyRequestDto,
-    @CurrentUser() user: any,
+    @GetUser() user: any,
   ) {
     console.log('createEmergencyRequest called with user:', user.id, 'and type:', createSosDto.type);
     return this.sosService.createEmergencyRequest(createSosDto, user.id);
@@ -30,7 +30,7 @@ export class SosController {
   async assignToHospital(
     @Param("id") id: string,
     @Body() assignDto: { hospitalId: string },
-    @CurrentUser() user: any,
+    @GetUser() user: any,
   ) {
     console.log('assignToHospital called with id:', id, 'and hospitalId:', assignDto.hospitalId);
     return this.sosService.assignToHospital(id, assignDto.hospitalId, user.id);
@@ -48,7 +48,7 @@ export class SosController {
 
   @Get()
   @Roles(UserRole.PATIENT)
-  async getEmergencyRequests(@CurrentUser() user: any) {
+  async getEmergencyRequests(@GetUser() user: any) {
     console.log('getEmergencyRequests called for user:', user.id);
     return this.sosService.getEmergencyRequests(user.id);
   }
@@ -63,7 +63,7 @@ export class SosController {
 
   @Get('dashboard/active-emergencies')
   @Roles(UserRole.EMERGENCY_CENTER, UserRole.HOSPITAL, UserRole.RESCUE_TEAM)
-  async getActiveEmergencies(@CurrentUser() user: any) {
+  async getActiveEmergencies(@GetUser() user: any) {
     console.log('getActiveEmergencies called for user:', user.email, 'role:', user.role);
     
     if (user.role === UserRole.HOSPITAL && user.organizationId) {
@@ -75,7 +75,7 @@ export class SosController {
 
   @Get(':id')
   @Roles(UserRole.PATIENT)
-  async getEmergencyRequestById(@Param('id') id: string, @CurrentUser() user: any) {
+  async getEmergencyRequestById(@Param('id') id: string, @GetUser() user: any) {
     console.log('getEmergencyRequestById called with id:', id);
     return this.sosService.getEmergencyRequestById(id, user.id);
   }

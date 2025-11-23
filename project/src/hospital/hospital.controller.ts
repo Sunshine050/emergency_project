@@ -5,6 +5,7 @@ import { HospitalService } from "./hospital.service";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
+import { GetUser } from "../auth/decorators/get-user.decorator";
 import { UserRole } from "@prisma/client";
 import {
   CreateHospitalDto,
@@ -12,6 +13,7 @@ import {
   UpdateHospitalCapacityDto,
   AcceptEmergencyDto,
 } from "./dto/hospital.dto";
+import { GenerateReportDto, GetReportsQueryDto } from "../reports/dto/reports.dto";
 
 @Controller("hospitals")
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -140,5 +142,52 @@ export class HospitalController {
       `PATCH /hospitals/emergency-responses/${responseId}/status called with status: ${status}`,
     );
     return this.hospitalService.updateEmergencyResponseStatusManual(responseId, status);
+  }
+
+  // === NEW REPORTS ENDPOINTS ===
+
+  @Get(":id/reports")
+  @Roles(UserRole.HOSPITAL, UserRole.ADMIN)
+  getReports(
+    @Param("id") hospitalId: string,
+    @Query() query: GetReportsQueryDto,
+  ) {
+    this.logger.log(`GET /hospitals/${hospitalId}/reports called`);
+    return this.hospitalService.getReports(hospitalId, query);
+  }
+
+  @Get(":id/stats")
+  @Roles(UserRole.HOSPITAL, UserRole.ADMIN)
+  getStats(
+    @Param("id") hospitalId: string,
+    @Query("period") period?: string,
+    @Query("startDate") startDate?: string,
+    @Query("endDate") endDate?: string,
+  ) {
+    this.logger.log(`GET /hospitals/${hospitalId}/stats called`);
+    return this.hospitalService.getStats(hospitalId, period, startDate, endDate);
+  }
+
+  @Get(":id/metrics")
+  @Roles(UserRole.HOSPITAL, UserRole.ADMIN)
+  getMetrics(
+    @Param("id") hospitalId: string,
+    @Query("metric") metric: string,
+    @Query("period") period: string,
+    @Query("granularity") granularity?: string,
+  ) {
+    this.logger.log(`GET /hospitals/${hospitalId}/metrics called`);
+    return this.hospitalService.getMetrics(hospitalId, metric, period, granularity);
+  }
+
+  @Post(":id/reports/generate")
+  @Roles(UserRole.HOSPITAL, UserRole.ADMIN)
+  generateReport(
+    @Param("id") hospitalId: string,
+    @Body() generateReportDto: GenerateReportDto,
+    @GetUser("id") userId: string,
+  ) {
+    this.logger.log(`POST /hospitals/${hospitalId}/reports/generate called`);
+    return this.hospitalService.generateReport(hospitalId, userId, generateReportDto);
   }
 }

@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationService } from "../notification/notification.service";
+import { ReportsService } from "../reports/reports.service";
 import {
   CreateHospitalDto,
   UpdateHospitalDto,
@@ -13,6 +14,7 @@ import {
   AcceptEmergencyDto,
 } from "./dto/hospital.dto";
 import { EmergencyStatus } from "../sos/dto/sos.dto";
+import { GenerateReportDto, GetReportsQueryDto } from "../reports/dto/reports.dto";
 
 // กำหนด type สำหรับ QueryMode
 type QueryMode = "default" | "insensitive";
@@ -24,6 +26,7 @@ export class HospitalService {
   constructor(
     private prisma: PrismaService,
     private notificationService: NotificationService,
+    private reportsService: ReportsService,
   ) {
     this.logger.log("HospitalService initialized");
   }
@@ -396,7 +399,6 @@ export class HospitalService {
     }
   }
 
-  // เพิ่ม method ใหม่: อัปเดตสถานะ EmergencyResponse ด้วย raw input
   async updateEmergencyResponseStatusManual(responseId: string, status: string) {
     this.logger.log(`Fetching emergency response with ID: ${responseId} to update status to ${status}`);
     const emergencyResponse = await this.prisma.emergencyResponse.findUnique({
@@ -439,5 +441,75 @@ export class HospitalService {
         `Failed to update emergency response: ${error.message}`,
       );
     }
+  }
+
+  // === REPORTS METHODS ===
+
+  async getReports(hospitalId: string, query: GetReportsQueryDto) {
+    this.logger.log(`Getting reports for hospital ${hospitalId}`);
+    return this.reportsService.findAll(hospitalId, query);
+  }
+
+  async getStats(
+    hospitalId: string,
+    period?: string,
+    startDate?: string,
+    endDate?: string,
+  ) {
+    this.logger.log(`Getting stats for hospital ${hospitalId}`);
+    
+    // Mock stats data - ในระบบจริงจะ query จาก database
+    return {
+      totalEmergencies: 125,
+      activeEmergencies: 12,
+      completedEmergencies: 110,
+      cancelledEmergencies: 3,
+      averageResponseTime: "8.5 minutes",
+      capacity: {
+        totalBeds: 100,
+        availableBeds: 45,
+        icuBeds: 20,
+        availableIcuBeds: 8,
+      },
+      period: period || "month",
+      startDate: startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+      endDate: endDate || new Date().toISOString(),
+    };
+  }
+
+  async getMetrics(
+    hospitalId: string,
+    metric: string,
+    period: string,
+    granularity?: string,
+  ) {
+    this.logger.log(`Getting metrics for hospital ${hospitalId}: ${metric}`);
+    
+    // Mock metrics data - ในระบบจริงจะ query จาก database
+    const mockData = [];
+    const dataPoints = granularity === 'daily' ? 30 : 12;
+    
+    for (let i = 0; i < dataPoints; i++) {
+      mockData.push({
+        timestamp: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString(),
+        value: Math.floor(Math.random() * 50) + 10,
+      });
+    }
+    
+    return {
+      metric,
+      period,
+      granularity: granularity || 'monthly',
+      data: mockData.reverse(),
+    };
+  }
+
+  async generateReport(
+    hospitalId: string,
+    userId: string,
+    generateReportDto: GenerateReportDto,
+  ) {
+    this.logger.log(`Generating report for hospital ${hospitalId}`);
+    return this.reportsService.generate(hospitalId, userId, generateReportDto);
   }
 }

@@ -171,12 +171,12 @@ export class AuthService {
 
         const accessToken = this.jwtService.sign(payload, {
           secret: this.configService.get<string>('JWT_SECRET'),
-          expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '15m'),
+          expiresIn: (this.configService.get<string>('JWT_EXPIRES_IN') || '15m') as any,
         });
 
         const refreshToken = this.jwtService.sign(payload, {
           secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-          expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d'),
+          expiresIn: (this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d') as any,
         });
 
         this.logger.log(`Login successful for user: ${user.id}, role: ${user.role}`);
@@ -274,12 +274,12 @@ export class AuthService {
 
       const accessToken = this.jwtService.sign(payload, {
         secret: this.configService.get<string>('JWT_SECRET'),
-        expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '15m'),
+        expiresIn: (this.configService.get<string>('JWT_EXPIRES_IN') || '15m') as any,
       });
 
       const refreshToken = this.jwtService.sign(payload, {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-        expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d'),
+        expiresIn: (this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d') as any,
       });
 
       this.logger.log(`Generated access token for user: ${user.id}, email: ${user.email}, role: ${user.role}`);
@@ -415,12 +415,12 @@ export class AuthService {
 
         const newAccessToken = this.jwtService.sign(newPayload, {
           secret: this.configService.get<string>('JWT_SECRET'),
-          expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '15m'),
+          expiresIn: (this.configService.get<string>('JWT_EXPIRES_IN') || '15m') as any,
         });
 
         const newRefreshToken = this.jwtService.sign(newPayload, {
           secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-          expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d'),
+          expiresIn: (this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d') as any,
         });
 
         this.logger.log(`Generated new access token for user: ${user.id}, email: ${user.email}, role: ${user.role}`);
@@ -458,12 +458,12 @@ export class AuthService {
 
         const newAccessToken = this.jwtService.sign(payload, {
           secret: this.configService.get<string>('JWT_SECRET'),
-          expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '15m'),
+          expiresIn: (this.configService.get<string>('JWT_EXPIRES_IN') || '15m') as any,
         });
 
         const newRefreshToken = this.jwtService.sign(payload, {
           secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-          expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d'),
+          expiresIn: (this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d') as any,
         });
 
         this.logger.log(`Generated new access token for user: ${user.id}, email: ${user.email}, role: ${user.role}`);
@@ -517,12 +517,12 @@ export class AuthService {
 
       const jwtAccessToken = this.jwtService.sign(payload, {
         secret: this.configService.get<string>('JWT_SECRET'),
-        expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '15m'),
+        expiresIn: (this.configService.get<string>('JWT_EXPIRES_IN') || '15m') as any,
       });
 
       const jwtRefreshToken = this.jwtService.sign(payload, {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-        expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d'),
+        expiresIn: (this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d') as any,
       });
 
       this.logger.log(`Login successful with Supabase token for user: ${user.id}, email: ${user.email}, role: ${user.role}`);
@@ -562,7 +562,7 @@ export class AuthService {
     this.logger.log(`Signing JWT for user: ${payload.email}`);
     return this.jwtService.sign(payload, {
       secret: this.configService.get<string>('JWT_SECRET'),
-      expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '15m'),
+      expiresIn: (this.configService.get<string>('JWT_EXPIRES_IN') || '15m') as any,
     });
   }
 }

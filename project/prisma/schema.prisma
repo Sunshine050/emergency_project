@@ -27,6 +27,7 @@ model User {
   emergencyRequests EmergencyRequest[] @relation("PatientRequests")
   notifications     Notification[]
   organization      Organization?      @relation(fields: [organizationId], references: [id])
+  reports           Report[]
 
   @@map("users")
   @@schema("emergency_project")
@@ -52,8 +53,48 @@ model Organization {
   vehicleTypes       String[]            @default([])  // เพิ่มฟิลด์นี้
   emergencyResponses EmergencyResponse[]
   users              User[]
+  reports            Report[]
+  metrics            HospitalMetrics[]
 
   @@map("organizations")
+  @@schema("emergency_project")
+}
+
+model Report {
+  id          String       @id @default(uuid())
+  hospitalId  String
+  title       String
+  type        String
+  period      String?
+  startDate   DateTime?
+  endDate     DateTime?
+  status      String
+  fileUrl     String?
+  generatedAt DateTime
+  generatedBy String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  organization Organization @relation(fields: [hospitalId], references: [id])
+  user         User?        @relation(fields: [generatedBy], references: [id])
+
+  @@map("reports")
+  @@schema("emergency_project")
+}
+
+model HospitalMetrics {
+  id          String       @id @default(uuid())
+  hospitalId  String
+  metricType  String
+  value       Decimal
+  timestamp   DateTime
+  metadata    Json?
+  createdAt   DateTime     @default(now())
+
+  organization Organization @relation(fields: [hospitalId], references: [id])
+
+  @@index([hospitalId, metricType, timestamp])
+  @@map("hospital_metrics")
   @@schema("emergency_project")
 }
 

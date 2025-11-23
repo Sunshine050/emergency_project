@@ -211,8 +211,10 @@ export class SosService {
       include: { patient: true, responses: { include: { organization: true } } },
     });
 
-    if (!emergencyRequests || emergencyRequests.length === 0)
-      throw new NotFoundException("No emergency requests found for this user");
+    // Return empty array if none found instead of throwing 404
+    if (!emergencyRequests || emergencyRequests.length === 0) {
+      return [];
+    }
 
     return emergencyRequests.map((request) => ({
       ...request,
@@ -238,8 +240,10 @@ export class SosService {
       include: { patient: true, responses: { include: { organization: true } } },
     });
 
-    if (!emergencyRequests || emergencyRequests.length === 0)
-      throw new NotFoundException("No emergency requests found");
+    // Return empty array if none found instead of throwing 404
+    if (!emergencyRequests || emergencyRequests.length === 0) {
+      return [];
+    }
 
     return emergencyRequests.map((request) => ({
       ...request,
