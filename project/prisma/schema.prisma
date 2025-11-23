@@ -23,7 +23,7 @@ model User {
   updatedAt         DateTime           @updatedAt
   organizationId    String?
   password          String?
-  medicalInfo       Json?
+  medicalInfo       Json? 
   emergencyRequests EmergencyRequest[] @relation("PatientRequests")
   notifications     Notification[]
   organization      Organization?      @relation(fields: [organizationId], references: [id])
@@ -45,13 +45,11 @@ model Organization {
   contactPhone       String
   contactEmail       String?
   status             String              @default("ACTIVE")
+  medicalInfo        Json?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
-  medicalInfo        Json?
-  availableBeds      Int?                @default(0) @map("available_beds")
-  totalBeds          Int?                @default(0) // ✅ เพิ่ม
-  icuBeds            Int?                @default(0) // ✅ เพิ่ม
-  availableIcuBeds   Int?                @default(0) // ✅ เพิ่ม
+  availableBeds      Int?                @default(0)
+  vehicleTypes       String[]            @default([])  // เพิ่มฟิลด์นี้
   emergencyResponses EmergencyResponse[]
   users              User[]
 
@@ -59,21 +57,19 @@ model Organization {
   @@schema("emergency_project")
 }
 
-
 model EmergencyRequest {
   id          String              @id @default(uuid())
-  status      EmergencyStatus     @default(PENDING)
+  status      String
+  type        String
   description String
   location    String?
   latitude    Float?
   longitude   Float?
   medicalInfo Json?
   createdAt   DateTime            @default(now())
+  updatedBy   String?
   updatedAt   DateTime            @updatedAt
   patientId   String
-  type        EmergencyType       @default(OTHER)
-  notes       String?
-  updatedBy   String?
   patient     User                @relation("PatientRequests", fields: [patientId], references: [id])
   responses   EmergencyResponse[]
 
@@ -109,29 +105,10 @@ model Notification {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   userId    String
+  read      Boolean  @default(false)
   user      User     @relation(fields: [userId], references: [id])
 
   @@map("notifications")
-  @@schema("emergency_project")
-}
-
-enum EmergencyStatus {
-  PENDING
-  ASSIGNED
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-
-  @@schema("emergency_project")
-}
-
-enum EmergencyType {
-  ACCIDENT
-  MEDICAL
-  FIRE
-  CRIME
-  OTHER
-
   @@schema("emergency_project")
 }
 

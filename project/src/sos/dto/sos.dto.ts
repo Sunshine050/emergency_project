@@ -1,4 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
+
 import {
   IsString,
   IsOptional,
@@ -19,7 +20,7 @@ export enum EmergencyType {
   MEDICAL = "MEDICAL",
   FIRE = "FIRE",
   CRIME = "CRIME",
-  OTHER = "OTHER",
+  OTHER = "OTHER", 
 }
 
 export enum EmergencyStatus {
