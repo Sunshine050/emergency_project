@@ -31,11 +31,7 @@ export class RescueController {
   }
 
   @Get()
-<<<<<<< HEAD
   @Roles(UserRole.ADMIN, UserRole.EMERGENCY_CENTER, UserRole.HOSPITAL)
-=======
-  @Roles(UserRole.ADMIN, UserRole.EMERGENCY_CENTER, UserRole.HOSPITAL)  // เพิ่ม UserRole.HOSPITAL ตรงนี้
->>>>>>> ba86f746f5640903a557528e48ed73519eeb7bdc
   findAll(@Query("search") search?: string) {
     return this.rescueService.findAll(search);
   }

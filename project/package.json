@@ -23,18 +23,6 @@
     "export-swagger": "ts-node src/export-swagger.ts"
   },
   "dependencies": {
-<<<<<<< HEAD
-    "@nestjs/common": "^11.1.0",
-    "@nestjs/config": "^4.0.0",
-    "@nestjs/core": "^11.1.0",
-    "@nestjs/jwt": "^10.2.0",
-    "@nestjs/passport": "^10.0.3",
-    "@nestjs/platform-express": "^10.0.0",
-    "@nestjs/platform-socket.io": "^11.1.0",
-    "@nestjs/swagger": "^11.1.5",
-    "@nestjs/websockets": "^10.4.17",
-    "@prisma/client": "^6.6.0",
-=======
     "@nestjs/common": "^11.1.6",
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.1.6",
@@ -45,7 +33,6 @@
     "@nestjs/swagger": "^11.2.0",
     "@nestjs/websockets": "^11.1.6",
     "@prisma/client": "^6.16.3",
->>>>>>> ba86f746f5640903a557528e48ed73519eeb7bdc
     "@supabase/supabase-js": "^2.49.4",
     "@types/mocha": "^10.0.10",
     "bcrypt": "^5.1.1",

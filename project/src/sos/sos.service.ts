@@ -230,19 +230,7 @@ export class SosService {
     if (!emergencyRequest || emergencyRequest.patientId !== userId)
       throw new NotFoundException("Emergency request not found");
 
-<<<<<<< HEAD
-    if (emergencyRequest.patientId !== userId) {
-      throw new NotFoundException("Emergency request not found");
-    }
-
-    return {
-      ...emergencyRequest,
-          emergencyType: emergencyRequest.type,
-      medicalInfo: emergencyRequest.medicalInfo || { grade: "NON_URGENT", severity: 1 },
-    };
-=======
     return { ...emergencyRequest, emergencyType: emergencyRequest.type, medicalInfo: emergencyRequest.medicalInfo || { grade: "NON_URGENT", severity: 1 } };
->>>>>>> ba86f746f5640903a557528e48ed73519eeb7bdc
   }
 
   async getAllEmergencyRequests() {
@@ -259,7 +247,6 @@ export class SosService {
       medicalInfo: request.medicalInfo || { grade: "NON_URGENT", severity: 1 },
     }));
   }
-<<<<<<< HEAD
 
   async findActiveEmergenciesByHospital(hospitalId: string) {
     const emergencyRequests = await this.prisma.emergencyRequest.findMany({
@@ -290,6 +277,3 @@ export class SosService {
     }));
   }
 }
-=======
-}
->>>>>>> ba86f746f5640903a557528e48ed73519eeb7bdc
