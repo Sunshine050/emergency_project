@@ -326,7 +326,7 @@ export class SosService {
 
     return {
       ...emergencyRequest,
-      emergencyType: emergencyRequest.type,
+          emergencyType: emergencyRequest.type,
       medicalInfo: emergencyRequest.medicalInfo || { grade: "NON_URGENT", severity: 1 },
     };
   }
@@ -346,6 +346,35 @@ export class SosService {
     if (!emergencyRequests || emergencyRequests.length === 0) {
       throw new NotFoundException("No emergency requests found");
     }
+
+    return emergencyRequests.map((request) => ({
+      ...request,
+      emergencyType: request.type,
+      medicalInfo: request.medicalInfo || { grade: "NON_URGENT", severity: 1 },
+    }));
+  }
+
+  async findActiveEmergenciesByHospital(hospitalId: string) {
+    const emergencyRequests = await this.prisma.emergencyRequest.findMany({
+      where: {
+        responses: {
+          some: {
+            organizationId: hospitalId,
+            status: {
+              in: ["ASSIGNED", "IN_PROGRESS"],
+            },
+          },
+        },
+      },
+      include: {
+        patient: true,
+        responses: {
+          include: {
+            organization: true,
+          },
+        },
+      },
+    });
 
     return emergencyRequests.map((request) => ({
       ...request,

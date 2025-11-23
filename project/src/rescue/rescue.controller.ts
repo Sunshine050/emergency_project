@@ -32,7 +32,7 @@ export class RescueController {
   }
 
   @Get()
-  @Roles(UserRole.ADMIN, UserRole.EMERGENCY_CENTER)
+  @Roles(UserRole.ADMIN, UserRole.EMERGENCY_CENTER, UserRole.HOSPITAL)
   findAll(@Query("search") search?: string) {
     return this.rescueService.findAll(search);
   }

@@ -1,3 +1,5 @@
+import { Organization } from '@prisma/client';
+
 // Auth interfaces for the application
 
 export interface TokenPayload {
@@ -33,4 +35,6 @@ export interface AuthTokens {
   refresh_token?: string;
   expires_in?: number;
   token_type?: string;
+  organizationId?: string | null;
+  organization?: Organization | null;
 }

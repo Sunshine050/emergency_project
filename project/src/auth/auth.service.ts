@@ -76,153 +76,142 @@ export class AuthService {
     }
   }
 
-  /**
-   * Register a new user with email and password (for staff)
-   */
-  async register(registerDto: RegisterDto) {
-    this.logger.log(`Registering new user: ${registerDto.email}`);
+    /**
+     * Register a new user with email and password (for staff)
+     */
+    async register(registerDto: RegisterDto) {
+      this.logger.log(`Registering new user: ${registerDto.email}`);
 
-    const { email, password, firstName, lastName, phone, role } = registerDto;
+      const { email, password, firstName, lastName, phone, role } = registerDto;
 
-    // Validate role (PATIENT not allowed for regular registration)
-    const allowedRoles: UserRole[] = [
-      UserRole.EMERGENCY_CENTER,
-      UserRole.HOSPITAL,
-      UserRole.RESCUE_TEAM,
-      UserRole.ADMIN,
-    ];
-    if (role && !allowedRoles.includes(role)) {
-      this.logger.warn(`Role not allowed: ${role}`);
-      throw new BadRequestException('This role cannot be registered this way');
+      // Validate role (PATIENT not allowed for regular registration)
+      const allowedRoles: UserRole[] = [
+        UserRole.EMERGENCY_CENTER,
+        UserRole.HOSPITAL,
+        UserRole.RESCUE_TEAM,
+        UserRole.ADMIN,
+      ];
+      if (role && !allowedRoles.includes(role)) {
+        this.logger.warn(`Role not allowed: ${role}`);
+        throw new BadRequestException('This role cannot be registered this way');
+      }
+
+      try {
+        // Check if email already exists
+        const existingUser = await this.prisma.user.findUnique({
+          where: { email },
+        });
+
+        if (existingUser) {
+          this.logger.warn(`Email already exists: ${email}`);
+          throw new ConflictException('This email is already in use');
+        }
+
+        // Hash password
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+        // Create new user
+        const user = await this.prisma.user.create({
+          data: {
+            email,
+            password: hashedPassword,
+            firstName,
+            lastName,
+            phone: phone || null,
+            role: role || UserRole.ADMIN,
+            status: UserStatus.ACTIVE,
+          },
+        });
+
+        this.logger.log(`Successfully created new user: ${user.id}`);
+        return user;
+      } catch (error) {
+        this.logger.error(`Error during registration: ${error.message}`, error.stack);
+        throw error instanceof ConflictException
+          ? error
+          : new InternalServerErrorException(`Cannot register user: ${error.message}`);
+      }
     }
 
-    try {
-      // Check if email already exists
-      const existingUser = await this.prisma.user.findUnique({
-        where: { email },
-      });
+    /**
+     * Login with email and password
+     */
+    async login(loginDto: LoginDto): Promise<AuthTokens> {
+      this.logger.log(`Logging in user: ${loginDto.email}`);
+      const { email, password } = loginDto;
+      try {
+        // Find user with password and organization relation
+        const user = await this.prisma.user.findUnique({
+          where: { email },
+          include: { organization: true },
+        });
 
-      if (existingUser) {
-        this.logger.warn(`Email already exists: ${email}`);
-        throw new ConflictException('This email is already in use');
+        if (!user || !user.password) {
+          this.logger.warn(`User not found or no password set: ${email}`);
+          throw new UnauthorizedException('Invalid email or password');
+        }
+
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+          this.logger.warn(`Invalid password for: ${email}`);
+          throw new UnauthorizedException('Invalid email or password');
+        }
+
+        if (user.status !== UserStatus.ACTIVE) {
+          this.logger.warn(`User is not active: ${email}`);
+          throw new UnauthorizedException('This account is disabled');
+        }
+
+        const payload: TokenPayload = {
+          sub: user.id,
+          email: user.email,
+          role: user.role.toString(),
+        };
+
+        const accessToken = this.jwtService.sign(payload, {
+          secret: this.configService.get<string>('JWT_SECRET'),
+          expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '15m'),
+        });
+
+        const refreshToken = this.jwtService.sign(payload, {
+          secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+          expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d'),
+        });
+
+        this.logger.log(`Login successful for user: ${user.id}, role: ${user.role}`);
+        return {
+          access_token: accessToken,
+          refresh_token: refreshToken,
+          token_type: 'Bearer',
+          expires_in: parseInt(this.configService.get('JWT_EXPIRES_IN', '900')),
+          organizationId: user.organizationId,
+          organization: user.organization,
+        };
+      } catch (error) {
+        this.logger.error(`Error during login: ${error.message}`, error.stack);
+        throw error instanceof UnauthorizedException
+          ? error
+          : new InternalServerErrorException(`Cannot login: ${error.message}`);
       }
-
-      // Hash password
-      const saltRounds = 10;
-      const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-      // Create new user
-      const user = await this.prisma.user.create({
-        data: {
-          email,
-          password: hashedPassword,
-          firstName,
-          lastName,
-          phone: phone || null,
-          role: role || UserRole.ADMIN,
-          status: UserStatus.ACTIVE,
-        },
-      });
-
-      this.logger.log(`Successfully created new user: ${user.id}`);
-      return user;
-    } catch (error) {
-      this.logger.error(`Error during registration: ${error.message}`, error.stack);
-      throw error instanceof ConflictException
-        ? error
-        : new InternalServerErrorException(`Cannot register user: ${error.message}`);
-    }
-  }
-
-  /**
-   * Login with email and password
-   */
-  async login(loginDto: LoginDto): Promise<AuthTokens> {
-    this.logger.log(`Logging in user: ${loginDto.email}`);
-
-    const { email, password } = loginDto;
-
-    try {
-      // Find user and select password
-      const user = await this.prisma.user.findUnique({
-        where: { email },
-        select: {
-          id: true,
-          email: true,
-          password: true,
-          role: true,
-          status: true,
-        },
-      });
-
-      if (!user || !user.password) {
-        this.logger.warn(`User not found or no password set: ${email}`);
-        throw new UnauthorizedException('Invalid email or password');
-      }
-
-      // Verify password
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-      if (!isPasswordValid) {
-        this.logger.warn(`Invalid password for: ${email}`);
-        throw new UnauthorizedException('Invalid email or password');
-      }
-
-      if (user.status !== UserStatus.ACTIVE) {
-        this.logger.warn(`User is not active: ${email}`);
-        throw new UnauthorizedException('This account is disabled');
-      }
-
-      // Generate JWT tokens
-      const payload: TokenPayload = {
-        sub: user.id,
-        email: user.email,
-        role: user.role.toString(),
-      };
-
-      const accessToken = this.jwtService.sign(payload, {
-        secret: this.configService.get<string>('JWT_SECRET'),
-        expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '15m'),
-      });
-
-      const refreshToken = this.jwtService.sign(payload, {
-        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-        expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d'),
-      });
-
-      this.logger.log(`Login successful for user: ${user.id}, role: ${user.role}`);
-      return {
-        access_token: accessToken,
-        refresh_token: refreshToken,
-        token_type: 'Bearer',
-        expires_in: parseInt(this.configService.get('JWT_EXPIRES_IN', '900')), // 15 minutes in seconds
-      };
-    } catch (error) {
-      this.logger.error(`Error during login: ${error.message}`, error.stack);
-      throw error instanceof UnauthorizedException
-        ? error
-        : new InternalServerErrorException(`Cannot login: ${error.message}`);
-    }
-  }
-
-  /**
-   * Generates an authorization URL for the specified OAuth provider
-   */
-  async generateAuthUrl(provider: string): Promise<string> {
-    const validProviders = ['google', 'facebook', 'apple'];
-
-    this.logger.log(`Generating auth URL for provider: ${provider}`);
-
-    if (!validProviders.includes(provider)) {
-      this.logger.error(`Unsupported provider: ${provider}`);
-      throw new BadRequestException(`Unsupported provider: ${provider}`);
     }
 
-    try {
-      const redirectUrl = this.configService.get<string>('OAUTH_REDIRECT_URL');
-      if (!redirectUrl) {
-        this.logger.error('OAUTH_REDIRECT_URL not configured');
-        throw new InternalServerErrorException('OAuth redirect URL not configured');
+    async generateAuthUrl(provider: string): Promise<string> {
+      const validProviders = ['google', 'facebook', 'apple'];
+
+      this.logger.log(`Generating auth URL for provider: ${provider}`);
+
+      if (!validProviders.includes(provider)) {
+        this.logger.error(`Unsupported provider: ${provider}`);
+        throw new BadRequestException(`Unsupported provider: ${provider}`);
       }
+
+      try {
+        const redirectUrl = this.configService.get<string>('OAUTH_REDIRECT_URL');
+        if (!redirectUrl) {
+          this.logger.error('OAUTH_REDIRECT_URL not configured');
+          throw new InternalServerErrorException('OAuth redirect URL not configured');
+        }
       this.logger.log(`Redirect URL: ${redirectUrl}`);
 
       const { data, error } = await this.supabase.auth.signInWithOAuth({

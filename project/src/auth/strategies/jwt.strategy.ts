@@ -29,19 +29,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     try {
       const user = await this.prisma.user.findUnique({
         where: { id: userId },
-        select: {
-          id: true,
-          email: true,
-          firstName: true,
-          lastName: true,
-          role: true,
-          status: true,
-        },
       });
-      console.log('JwtStrategy - User from DB:', user); // Log ผู้ใช้ที่ query ได้
 
       if (!user) {
-        console.error('JwtStrategy - Error: User not found for ID:', userId);
         throw new UnauthorizedException("User not found");
       }
 

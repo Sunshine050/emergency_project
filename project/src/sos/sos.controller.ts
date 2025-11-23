@@ -61,17 +61,22 @@ export class SosController {
     return this.sosService.getAllEmergencyRequests();
   }
 
+  @Get('dashboard/active-emergencies')
+  @Roles(UserRole.EMERGENCY_CENTER, UserRole.HOSPITAL, UserRole.RESCUE_TEAM)
+  async getActiveEmergencies(@CurrentUser() user: any) {
+    console.log('getActiveEmergencies called for user:', user.email, 'role:', user.role);
+    
+    if (user.role === UserRole.HOSPITAL && user.organizationId) {
+      return this.sosService.findActiveEmergenciesByHospital(user.organizationId);
+    }
+    
+    return this.sosService.getAllEmergencyRequests();
+  }
+
   @Get(':id')
   @Roles(UserRole.PATIENT)
   async getEmergencyRequestById(@Param('id') id: string, @CurrentUser() user: any) {
     console.log('getEmergencyRequestById called with id:', id);
     return this.sosService.getEmergencyRequestById(id, user.id);
-  }
-
-  @Get('dashboard/active-emergencies')
-  @Roles(UserRole.EMERGENCY_CENTER, UserRole.HOSPITAL, UserRole.RESCUE_TEAM)
-  async getActiveEmergencies() {
-    console.log('getActiveEmergencies called');
-    return this.sosService.getAllEmergencyRequests();
   }
 }
