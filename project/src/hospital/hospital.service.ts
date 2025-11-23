@@ -111,10 +111,10 @@ export class HospitalService {
         ...(hospital.medicalInfo as Record<string, any> || {}),
         capacity: {
           ...(hospital.medicalInfo && (hospital.medicalInfo as any).capacity ? (hospital.medicalInfo as any).capacity : {}),
-          totalBeds: hospital.totalBeds ?? (hospital.medicalInfo as any)?.capacity?.totalBeds ?? 0,
+          totalBeds: (hospital.medicalInfo as any)?.capacity?.totalBeds ?? 0,
           availableBeds: hospital.availableBeds ?? (hospital.medicalInfo as any)?.capacity?.availableBeds ?? 0,
-          icuBeds: hospital.icuBeds ?? (hospital.medicalInfo as any)?.capacity?.icuBeds ?? 0,
-          availableIcuBeds: hospital.availableIcuBeds ?? (hospital.medicalInfo as any)?.capacity?.availableIcuBeds ?? 0,
+          icuBeds: (hospital.medicalInfo as any)?.capacity?.icuBeds ?? 0,
+          availableIcuBeds: (hospital.medicalInfo as any)?.capacity?.availableIcuBeds ?? 0,
         }
       },
     };
@@ -150,15 +150,12 @@ export class HospitalService {
     const medicalInfo = hospital.medicalInfo as Record<string, any> | null;
 
     const capacityPlainObject = { ...updateCapacityDto };
-    const { totalBeds, availableBeds, icuBeds, availableIcuBeds } = updateCapacityDto;
+    const { availableBeds } = updateCapacityDto;
 
     return this.prisma.organization.update({
       where: { id },
       data: {
-        totalBeds,
         availableBeds,
-        icuBeds,
-        availableIcuBeds,
         medicalInfo: {
           ...(medicalInfo || {}),
           capacity: capacityPlainObject,

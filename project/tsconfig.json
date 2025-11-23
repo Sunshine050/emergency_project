@@ -1,7 +1,9 @@
 {
   "compilerOptions": {
     "module": "commonjs",
-    // "types": ["jest", "node"], // ลบหรือคอมเมนต์บรรทัดนี้
+    "types": [
+      "node"
+    ],
     "declaration": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,
@@ -19,8 +21,13 @@
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": [
+        "src/*"
+      ]
     }
   },
-  "include": ["src/**/*.ts", "src/export-swagger.ts"]
+  "include": [
+    "src/**/*.ts",
+    "src/export-swagger.ts"
+  ]
 }
