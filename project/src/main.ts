@@ -6,9 +6,18 @@ import { IoAdapter } from '@nestjs/platform-socket.io';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as cookieParser from 'cookie-parser';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Serve static assets (including swagger.json) from the "public" folder
+  // Files placed in project/public will be reachable at /static/*
+  // Example: http://localhost:3001/static/swagger.json
+  app.useStaticAssets(join(__dirname, '..', 'public'), {
+    prefix: '/static/',
+  });
+
   app.useLogger(['log', 'error', 'warn', 'debug', 'verbose']);
   const configService = app.get(ConfigService);
 
@@ -31,7 +40,7 @@ async function bootstrap() {
     exposedHeaders: ['Set-Cookie'],
   });
 
-  // ตั้งค่า WebSocket adapter
+  // WebSocket adapter
   class CustomIoAdapter extends IoAdapter {
     constructor(app: NestExpressApplication) {
       super(app);
@@ -42,9 +51,49 @@ async function bootstrap() {
   // Swagger configuration
   const config = new DocumentBuilder()
     .setTitle('Emergency Project API')
-    .setDescription('API documentation for Emergency Project')
+    .setDescription(`
+      ## Emergency Response Management System API
+      
+      This API provides comprehensive endpoints for managing emergency requests, hospitals, rescue teams, and related services.
+      
+      ### Features:
+      - **Authentication**: OAuth 2.0 (Google, Facebook, Apple) and Email/Password
+      - **Emergency Requests**: Create and manage SOS emergency requests
+      - **Hospital Management**: Hospital capacity, emergency acceptance
+      - **Rescue Teams**: Team management and assignment
+      - **Dashboard**: Real-time statistics and monitoring
+      - **Notifications**: Real-time push notifications
+      - **Reports**: Generate and download reports
+      - **User Settings**: Manage user preferences and settings
+      
+      ### Authentication:
+      Most endpoints require JWT Bearer token authentication. Use the /auth endpoints to obtain tokens.
+    `)
     .setVersion('1.0')
-    .addBearerAuth()
+    .setContact('Emergency Project Team', 'https://emergency-project.com', 'support@emergency-project.com')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: 'Enter JWT token',
+        in: 'header',
+      },
+      'JWT-auth',
+    )
+    .addServer('http://localhost:3001', 'Local Development Server')
+    .addServer('https://api.emergency-project.com', 'Production Server')
+    .addTag('Auth', 'Authentication and authorization endpoints')
+    .addTag('SOS / Emergency Requests', 'Emergency request management')
+    .addTag('Hospitals', 'Hospital management and capacity')
+    .addTag('Rescue Teams', 'Rescue team management')
+    .addTag('Dashboard', 'Dashboard statistics and monitoring')
+    .addTag('Notifications', 'User notifications')
+    .addTag('Reports', 'Report generation and download')
+    .addTag('Settings', 'User settings and preferences')
+    .addTag('Users', 'User profile management')
+    .addTag('Health Check', 'API health check endpoints')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
@@ -52,7 +101,16 @@ async function bootstrap() {
   // ❌ ไม่เขียนไฟล์ swagger.json ที่นี่ (ป้องกัน loop ใน dev)
   // หากต้องการ export ให้ใช้ export-swagger.ts
 
-  SwaggerModule.setup('api', app, document);
+  SwaggerModule.setup('api', app, document, {
+    customSiteTitle: 'Emergency Project API Documentation',
+    customCss: '.swagger-ui .topbar { display: none }',
+    swaggerOptions: {
+      persistAuthorization: true,
+      docExpansion: 'none',
+      filter: true,
+      showRequestDuration: true,
+    },
+  });
 
   const port = configService.get('PORT') || 3001;
   await app.listen(port);
@@ -61,5 +119,4 @@ async function bootstrap() {
   console.log(`📘 Swagger UI is available at: http://localhost:${port}/api`);
   console.log(`🌐 CORS configured for: ${clientUrl}`);
 }
-
 bootstrap();

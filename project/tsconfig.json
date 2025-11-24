@@ -28,6 +28,7 @@
   },
   "include": [
     "src/**/*.ts",
-    "src/export-swagger.ts"
+    "src/export-swagger.ts",
+    "prisma.config.ts"
   ]
 }

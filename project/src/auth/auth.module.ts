@@ -17,7 +17,8 @@ import { UserModule } from "../user/user.module";
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>("JWT_SECRET"),
         signOptions: {
-          expiresIn: configService.get<string>("JWT_EXPIRES_IN", "7d"),
+          // Cast to any to satisfy NestJS type (expects number | StringValue)
+          expiresIn: configService.get<string>("JWT_EXPIRES_IN", "7d") as any,
         },
       }),
     }),
@@ -29,3 +30,4 @@ import { UserModule } from "../user/user.module";
   exports: [AuthService, JwtStrategy, PassportModule, JwtModule],
 })
 export class AuthModule {}
+

@@ -5,6 +5,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
   schemas  = ["emergency_project"]
 }
 
@@ -22,7 +23,13 @@ model User {
   updatedAt         DateTime           @updatedAt
   organizationId    String?
   password          String?
-  medicalInfo       Json? 
+  medicalInfo       Json?
+  // Settings stored as JSON for easy extension
+  notificationSettings   Json? @default("{}")
+  systemSettings         Json? @default("{}")
+  communicationSettings  Json? @default("{}")
+  profileSettings        Json? @default("{}")
+  emergencySettings      Json? @default("{}")
   emergencyRequests EmergencyRequest[] @relation("PatientRequests")
   notifications     Notification[]
   organization      Organization?      @relation(fields: [organizationId], references: [id])

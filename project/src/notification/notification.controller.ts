@@ -1,8 +1,11 @@
 import { Controller, Get, Put, Delete, Param, UseGuards, Logger } from "@nestjs/common";
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { NotificationService } from "./notification.service";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 
+@ApiTags('Notifications')
+@ApiBearerAuth()
 @Controller("notifications")
 @UseGuards(JwtAuthGuard)
 export class NotificationController {
@@ -13,6 +16,9 @@ export class NotificationController {
   }
 
   @Get()
+  @ApiOperation({ summary: 'Get all notifications', description: 'Get all notifications for authenticated user' })
+  @ApiResponse({ status: 200, description: 'Notifications retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async findAll(@CurrentUser() user: any) {
     this.logger.log(`Fetching notifications for userId: ${user.id}`);
     try {
@@ -26,6 +32,10 @@ export class NotificationController {
   }
 
   @Put(":id/read")
+  @ApiOperation({ summary: 'Mark notification as read', description: 'Mark a specific notification as read' })
+  @ApiParam({ name: 'id', description: 'Notification ID' })
+  @ApiResponse({ status: 200, description: 'Notification marked as read successfully' })
+  @ApiResponse({ status: 404, description: 'Notification not found' })
   async markAsRead(@Param("id") id: string, @CurrentUser() user: any) {
     this.logger.log(`Marking notification as read: { id: ${id}, userId: ${user.id} }`);
     try {
@@ -39,6 +49,9 @@ export class NotificationController {
   }
 
   @Put("read-all")
+  @ApiOperation({ summary: 'Mark all notifications as read', description: 'Mark all notifications as read for authenticated user' })
+  @ApiResponse({ status: 200, description: 'All notifications marked as read successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async markAllAsRead(@CurrentUser() user: any) {
     this.logger.log(`Marking all notifications as read for userId: ${user.id}`);
     try {
@@ -52,6 +65,10 @@ export class NotificationController {
   }
 
   @Delete(":id")
+  @ApiOperation({ summary: 'Delete notification', description: 'Delete a specific notification' })
+  @ApiParam({ name: 'id', description: 'Notification ID' })
+  @ApiResponse({ status: 200, description: 'Notification deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Notification not found' })
   async deleteNotification(@Param("id") id: string, @CurrentUser() user: any) {
     this.logger.log(`Deleting notification: { id: ${id}, userId: ${user.id} }`);
     try {
