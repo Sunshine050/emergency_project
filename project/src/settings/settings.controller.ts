@@ -3,6 +3,7 @@ import {
   Get,
   Put,
   Patch,
+  Post,
   Param,
   Body,
   Req,
@@ -25,7 +26,7 @@ export class SettingsController {
   @ApiResponse({ status: 200, description: 'User settings retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getMe(@Req() req: any) {
-    const userId = req.user.sub;
+    const userId = req.user.id;
     return this.settingsService.getUserSettings(userId);
   }
 
@@ -35,7 +36,7 @@ export class SettingsController {
   @ApiResponse({ status: 200, description: 'Settings updated successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async putMe(@Req() req: any, @Body() dto: UpdateSettingsDto) {
-    const userId = req.user.sub;
+    const userId = req.user.id;
     const updated = await this.settingsService.updateUserSettings(userId, dto);
     return { message: 'Settings updated', updatedSettings: updated };
   }
@@ -51,7 +52,7 @@ export class SettingsController {
     @Param('category') category: string,
     @Body() payload: any,
   ) {
-    const userId = req.user.sub;
+    const userId = req.user.id;
     const updated = await this.settingsService.updateCategory(
       userId,
       category,
@@ -61,13 +62,24 @@ export class SettingsController {
   }
 
   @Get('me/:category')
-  @ApiOperation({ summary: 'Get specific settings category', description: 'Retrieve settings for a specific category' })
+  @ApiOperation({ summary: 'Get specific settings category', description: 'Get settings for a specific category' })
   @ApiParam({ name: 'category', description: 'Settings category (notification, system, communication, profile, emergency)', example: 'notification' })
   @ApiResponse({ status: 200, description: 'Category settings retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getCategory(@Req() req: any, @Param('category') category: string) {
-    const userId = req.user.sub;
-    const all = await this.settingsService.getUserSettings(userId);
-    return all[`${category}Settings`];
+    const userId = req.user.id;
+    const settings = await this.settingsService.getUserSettings(userId);
+    const field = `${category}Settings`;
+    return settings[field] || {};
+  }
+
+  @Post('reset')
+  @ApiOperation({ summary: 'Reset all settings to default', description: 'Reset all user settings to their default values' })
+  @ApiResponse({ status: 200, description: 'Settings reset to default successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async resetToDefault(@Req() req: any) {
+    const userId = req.user.id;
+    await this.settingsService.resetToDefault(userId);
+    return { message: 'Settings reset to default successfully' };
   }
 }

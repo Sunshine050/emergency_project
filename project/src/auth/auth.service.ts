@@ -111,7 +111,48 @@ export class AuthService {
         const saltRounds = 10;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-        // Create new user
+        // Default settings for new user
+        const defaultSettings = {
+          notificationSettings: {
+            emergencyAlerts: true,
+            statusUpdates: true,
+            systemNotifications: true,
+            soundEnabled: true,
+            emailNotifications: false,
+            smsNotifications: false,
+          },
+          systemSettings: {
+            language: 'th',
+            timeZone: 'Asia/Bangkok',
+            dateFormat: 'DD/MM/YYYY',
+            mapProvider: 'google',
+            autoRefreshInterval: '30s',
+            theme: 'system',
+            caseManagement: {
+              autoForward: true,
+              slaResponseTime: 15,
+            },
+            dashboard: {
+              layout: 'grid',
+              refreshInterval: 30,
+            },
+          },
+          communicationSettings: {
+            preferredChannel: 'app',
+            autoReply: false,
+          },
+          profileSettings: {
+            displayName: `${firstName} ${lastName}`,
+            avatar: '',
+            bio: '',
+          },
+          emergencySettings: {
+            quickResponseEnabled: true,
+            autoLocationShare: true,
+          },
+        };
+
+        // Create new user with default settings
         const user = await this.prisma.user.create({
           data: {
             email,
@@ -121,10 +162,11 @@ export class AuthService {
             phone: phone || null,
             role: role || UserRole.ADMIN,
             status: UserStatus.ACTIVE,
+            ...defaultSettings,
           },
         });
 
-        this.logger.log(`Successfully created new user: ${user.id}`);
+        this.logger.log(`Successfully created new user with default settings: ${user.id}`);
         return user;
       } catch (error) {
         this.logger.error(`Error during registration: ${error.message}`, error.stack);
