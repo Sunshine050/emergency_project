@@ -141,6 +141,7 @@ export class HospitalController {
     UserRole.HOSPITAL,
     UserRole.EMERGENCY_CENTER,
     UserRole.RESCUE_TEAM,
+    UserRole.PATIENT, // เพิ่ม PATIENT เพื่อให้ patient สามารถเข้าถึงได้
   )
   @ApiOperation({ summary: 'Find nearby hospitals', description: 'Find hospitals within a specified radius from coordinates' })
   @ApiParam({ name: 'latitude', description: 'Latitude coordinate' })

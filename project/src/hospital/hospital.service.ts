@@ -224,7 +224,7 @@ export class HospitalService {
       `Finding nearby hospitals for lat: ${latitude}, lon: ${longitude}, radius: ${radius}`,
     );
     const hospitals = await this.prisma.$queryRaw`
-      SELECT 
+      SELECT
         id,
         name,
         address,
@@ -242,7 +242,7 @@ export class HospitalService {
           )
         ) AS distance
       FROM "emergency_project"."organizations"
-      WHERE 
+      WHERE
         type = 'HOSPITAL'
         AND status = 'ACTIVE'
       HAVING distance <= ${radius}
@@ -454,7 +454,7 @@ export class HospitalService {
     endDate?: string,
   ) {
     this.logger.log(`Getting stats for hospital ${hospitalId}`);
-    
+
     // Mock stats data - ในระบบจริงจะ query จาก database
     return {
       totalEmergencies: 125,
@@ -481,18 +481,18 @@ export class HospitalService {
     granularity?: string,
   ) {
     this.logger.log(`Getting metrics for hospital ${hospitalId}: ${metric}`);
-    
+
     // Mock metrics data - ในระบบจริงจะ query จาก database
     const mockData = [];
     const dataPoints = granularity === 'daily' ? 30 : 12;
-    
+
     for (let i = 0; i < dataPoints; i++) {
       mockData.push({
         timestamp: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString(),
         value: Math.floor(Math.random() * 50) + 10,
       });
     }
-    
+
     return {
       metric,
       period,
