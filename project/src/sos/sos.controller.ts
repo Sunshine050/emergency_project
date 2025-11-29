@@ -20,103 +20,79 @@ export class SosController {
 
   @Post()
   @Roles(UserRole.PATIENT, UserRole.EMERGENCY_CENTER)
-  @ApiOperation({ summary: 'Create emergency request', description: 'Create a new SOS emergency request (PATIENT or EMERGENCY_CENTER)' })
+  @ApiOperation({ summary: 'Create emergency request' })
   @ApiBody({ type: CreateEmergencyRequestDto })
-  @ApiResponse({ status: 201, description: 'Emergency request created successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   createEmergencyRequest(
     @Body() createSosDto: CreateEmergencyRequestDto,
     @GetUser() user: any,
   ) {
-    console.log('createEmergencyRequest called with user:', user.id, 'and type:', createSosDto.type);
     return this.sosService.createEmergencyRequest(createSosDto, user.id);
   }
 
   @Post(":id/assign")
   @Roles(UserRole.EMERGENCY_CENTER)
-  @ApiOperation({ summary: 'Assign emergency to hospital', description: 'Assign an emergency request to a specific hospital (EMERGENCY_CENTER only)' })
-  @ApiParam({ name: 'id', description: 'Emergency request ID' })
-  @ApiBody({ schema: { type: 'object', properties: { hospitalId: { type: 'string', description: 'Hospital organization ID' } } } })
-  @ApiResponse({ status: 200, description: 'Emergency assigned to hospital successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - EMERGENCY_CENTER role required' })
-  @ApiResponse({ status: 404, description: 'Emergency request or hospital not found' })
+  @ApiOperation({ summary: 'Assign emergency to hospital' })
+  @ApiParam({ name: 'id' })
+  @ApiBody({ schema: { type: 'object', properties: { hospitalId: { type: 'string' } } } })
   async assignToHospital(
     @Param("id") id: string,
     @Body() assignDto: { hospitalId: string },
     @GetUser() user: any,
   ) {
-    console.log('assignToHospital called with id:', id, 'and hospitalId:', assignDto.hospitalId);
     return this.sosService.assignToHospital(id, assignDto.hospitalId, user.id);
   }
 
   @Put(":id/status")
   @Roles(UserRole.EMERGENCY_CENTER, UserRole.HOSPITAL, UserRole.RESCUE_TEAM)
-  @ApiOperation({ summary: 'Update emergency status', description: 'Update the status of an emergency request' })
-  @ApiParam({ name: 'id', description: 'Emergency request ID' })
+  @ApiOperation({ summary: 'Update emergency status' })
+  @ApiParam({ name: 'id' })
   @ApiBody({ type: UpdateEmergencyStatusDto })
-  @ApiResponse({ status: 200, description: 'Emergency status updated successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
-  @ApiResponse({ status: 404, description: 'Emergency request not found' })
   updateStatus(
     @Param("id") id: string,
     @Body() updateStatusDto: UpdateEmergencyStatusDto,
   ) {
-    console.log('updateStatus called with id:', id);
     return this.sosService.updateStatus(id, updateStatusDto);
   }
 
   @Get()
   @Roles(UserRole.PATIENT)
-  @ApiOperation({ summary: 'Get my emergency requests', description: 'Get all emergency requests created by the authenticated patient' })
-  @ApiResponse({ status: 200, description: 'Emergency requests retrieved successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - PATIENT role required' })
+  @ApiOperation({ summary: 'Get my emergency requests' })
   async getEmergencyRequests(@GetUser() user: any) {
-    console.log('getEmergencyRequests called for user:', user.id);
     return this.sosService.getEmergencyRequests(user.id);
   }
 
   @Get('all')
   @Roles(UserRole.EMERGENCY_CENTER, UserRole.HOSPITAL, UserRole.RESCUE_TEAM)
-  @ApiOperation({ summary: 'Get all emergency requests', description: 'Get all emergency requests in the system (staff only)' })
-  @ApiResponse({ status: 200, description: 'All emergency requests retrieved successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Staff role required' })
+  @ApiOperation({ summary: 'Get all emergency requests' })
   async getAllEmergencyRequests() {
-    console.log('getAllEmergencyRequests called');
-    console.log('Expected roles:', [UserRole.EMERGENCY_CENTER, UserRole.HOSPITAL, UserRole.RESCUE_TEAM]);
     return this.sosService.getAllEmergencyRequests();
   }
 
   @Get('dashboard/active-emergencies')
   @Roles(UserRole.EMERGENCY_CENTER, UserRole.HOSPITAL, UserRole.RESCUE_TEAM)
-  @ApiOperation({ summary: 'Get active emergencies for dashboard', description: 'Get active emergencies (filtered by hospital if HOSPITAL role)' })
-  @ApiResponse({ status: 200, description: 'Active emergencies retrieved successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Staff role required' })
+  @ApiOperation({ summary: 'Get active emergencies for dashboard' })
   async getActiveEmergencies(@GetUser() user: any) {
-    console.log('getActiveEmergencies called for user:', user.email, 'role:', user.role);
-    
     if (user.role === UserRole.HOSPITAL && user.organizationId) {
       return this.sosService.findActiveEmergenciesByHospital(user.organizationId);
     }
-    
     return this.sosService.getAllEmergencyRequests();
+  }
+
+  @Get('rescue/assigned-cases')
+  @Roles(UserRole.RESCUE_TEAM)
+  @ApiOperation({ summary: 'Get assigned cases for rescue team' })
+  async getAssignedCases(@GetUser() user: any) {
+    if (!user.organizationId) {
+      return [];
+    }
+    return this.sosService.findCasesByRescueTeam(user.organizationId);
   }
 
   @Get(':id')
   @Roles(UserRole.PATIENT)
-  @ApiOperation({ summary: 'Get emergency request by ID', description: 'Get a specific emergency request by ID (patient only)' })
-  @ApiParam({ name: 'id', description: 'Emergency request ID' })
-  @ApiResponse({ status: 200, description: 'Emergency request retrieved successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - PATIENT role required' })
-  @ApiResponse({ status: 404, description: 'Emergency request not found' })
+  @ApiOperation({ summary: 'Get emergency request by ID' })
+  @ApiParam({ name: 'id' })
   async getEmergencyRequestById(@Param('id') id: string, @GetUser() user: any) {
-    console.log('getEmergencyRequestById called with id:', id);
     return this.sosService.getEmergencyRequestById(id, user.id);
   }
 }

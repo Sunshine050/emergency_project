@@ -280,4 +280,25 @@ export class SosService {
       medicalInfo: request.medicalInfo || { grade: "NON_URGENT", severity: 1 },
     }));
   }
+  async findCasesByRescueTeam(rescueTeamId: string) {
+    const emergencyRequests = await this.prisma.emergencyRequest.findMany({
+      where: {
+        responses: {
+          some: {
+            organizationId: rescueTeamId,
+          },
+        },
+      },
+      include: {
+        patient: true,
+        responses: { include: { organization: true } },
+      },
+    });
+
+    return emergencyRequests.map((request) => ({
+      ...request,
+      emergencyType: request.type,
+      medicalInfo: request.medicalInfo || { grade: "NON_URGENT", severity: 1 },
+    }));
+  }
 }
