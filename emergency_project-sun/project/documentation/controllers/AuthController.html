@@ -1,0 +1,1199 @@
+<!doctype html>
+<html class="no-js" lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <title>emergency-response-system documentation</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="icon" type="image/x-icon" href="../images/favicon.ico">
+	   <link rel="stylesheet" href="../styles/style.css">
+        <link rel="stylesheet" href="../styles/dark.css">
+    </head>
+    <body>
+          <script>
+               // Blocking script to avoid flickering dark mode
+               // Dark mode toggle button
+               var useDark = window.matchMedia('(prefers-color-scheme: dark)');
+               var darkModeState = useDark.matches;
+               var $darkModeToggleSwitchers = document.querySelectorAll('.dark-mode-switch input');
+               var $darkModeToggles = document.querySelectorAll('.dark-mode-switch');
+               var darkModeStateLocal = localStorage.getItem('compodoc_darkmode-state');
+
+               function checkToggle(check) {
+                    for (var i = 0; i < $darkModeToggleSwitchers.length; i++) {
+                         $darkModeToggleSwitchers[i].checked = check;
+                    }
+               }
+
+               function toggleDarkMode(state) {
+                    if (window.localStorage) {
+                         localStorage.setItem('compodoc_darkmode-state', state);
+                    }
+
+                    checkToggle(state);
+
+                    const hasClass = document.body.classList.contains('dark');
+
+                    if (state) {
+                         for (var i = 0; i < $darkModeToggles.length; i++) {
+                              $darkModeToggles[i].classList.add('dark');
+                         }
+                         if (!hasClass) {
+                              document.body.classList.add('dark');
+                         }
+                    } else {
+                         for (var i = 0; i < $darkModeToggles.length; i++) {
+                              $darkModeToggles[i].classList.remove('dark');
+                         }
+                         if (hasClass) {
+                              document.body.classList.remove('dark');
+                         }
+                    }
+               }
+
+               useDark.addEventListener('change', function (evt) {
+                    toggleDarkMode(evt.matches);
+               });
+               if (darkModeStateLocal) {
+                    darkModeState = darkModeStateLocal === 'true';
+               }
+               toggleDarkMode(darkModeState);
+          </script>
+
+        <div class="navbar navbar-default navbar-fixed-top d-md-none p-0">
+               <div class="d-flex">
+                    <a href="../" class="navbar-brand">emergency-response-system documentation</a>
+                    <button type="button" class="btn btn-default btn-menu ion-ios-menu" id="btn-menu"></button>
+               </div>
+        </div>
+
+        <div class="xs-menu menu" id="mobile-menu">
+                <div id="book-search-input" role="search"><input type="text" placeholder="Type to search"></div>            <compodoc-menu></compodoc-menu>
+        </div>
+
+        <div class="container-fluid main">
+           <div class="row main">
+               <div class="d-none d-md-block menu">
+                   <compodoc-menu mode="normal"></compodoc-menu>
+               </div>
+               <!-- START CONTENT -->
+               <div class="content controller">
+                   <div class="content-data">
+
+
+
+
+
+<ol class="breadcrumb">
+  <li class="breadcrumb-item">Controllers</li>
+  <li class="breadcrumb-item" >AuthController</li>
+</ol>
+
+<ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item">
+            <a href="#info" 
+                class="nav-link"
+                class="nav-link active"
+                role="tab" id="info-tab" data-bs-toggle="tab" data-link="info">Info</a>
+        </li>
+        <li class="nav-item">
+            <a href="#source" 
+                class="nav-link"
+                
+                role="tab" id="source-tab" data-bs-toggle="tab" data-link="source">Source</a>
+        </li>
+</ul>
+
+<div class="tab-content">
+    <div class="tab-pane fade active in" id="info">
+        <p class="comment">
+            <h3>File</h3>
+        </p>
+        <p class="comment">
+            <code>src/auth/auth.controller.ts</code>
+        </p>
+
+            <p class="comment">
+                <h3>Prefix</h3>
+            </p>
+            <p class="comment">
+                <code>auth</code>
+            </p>
+
+
+
+
+
+
+            <section data-compodoc="block-index">
+    <h3 id="index">Index</h3>
+    <table class="table table-sm table-bordered index-table">
+        <tbody>
+
+                <tr>
+                    <td class="col-md-4">
+                        <h6><b>Methods</b></h6>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-md-4">
+                        <ul class="index-list">
+                            <li>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                <a href="#getProfile" >getProfile</a>
+                            </li>
+                            <li>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier">Async</span>
+                                <a href="#login" >login</a>
+                            </li>
+                            <li>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier">Async</span>
+                                <a href="#oauthCallback" >oauthCallback</a>
+                            </li>
+                            <li>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier">Async</span>
+                                <a href="#oauthLogin" >oauthLogin</a>
+                            </li>
+                            <li>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier">Async</span>
+                                <a href="#refreshToken" >refreshToken</a>
+                            </li>
+                            <li>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier">Async</span>
+                                <a href="#register" >register</a>
+                            </li>
+                            <li>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier">Async</span>
+                                <a href="#supabaseLogin" >supabaseLogin</a>
+                            </li>
+                        </ul>
+                    </td>
+                </tr>
+
+
+
+
+
+        </tbody>
+    </table>
+</section>
+
+            <section data-compodoc="block-methods">
+    
+    <h3 id="methods">
+        Methods
+    </h3>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="getProfile"></a>
+                    <span class="name">
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                        <span ><b>getProfile</b></span>
+                        <a href="#getProfile"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>getProfile(req)</code>
+                </td>
+            </tr>
+
+            <tr>
+                <td class="col-md-4">
+                    <b>Decorators : </b>
+                    <br />
+                    <code>@UseGuards(JwtAuthGuard)<br />@Get(&#x27;me&#x27;)<br />@ApiOperation({summary: &#x27;Get authenticated user profile&#x27;})<br />@ApiBearerAuth()<br />@ApiResponse({status: 200, description: &#x27;User profile retrieved&#x27;})<br />@ApiResponse({status: 401, description: &#x27;Unauthorized&#x27;})<br /></code>
+                </td>
+            </tr>
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="202"
+                                    class="link-to-prism">src/auth/auth.controller.ts:202</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>Test endpoint to verify user authentication</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>req</td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>        <code><a href="https://www.typescriptlang.org/docs/handbook/basic-types.html" target="_blank" >any</a></code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="login"></a>
+                    <span class="name">
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier">Async</span>
+                        <span ><b>login</b></span>
+                        <a href="#login"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>login(loginDto: <a href="../classes/LoginDto.html" target="_self">LoginDto</a>, res: <a href="../interfaces/Response.html" target="_self">Response</a>)</code>
+                </td>
+            </tr>
+
+            <tr>
+                <td class="col-md-4">
+                    <b>Decorators : </b>
+                    <br />
+                    <code>@Public()<br />@Post(&#x27;login&#x27;)<br />@ApiOperation({summary: &#x27;Login with email and password&#x27;})<br />@ApiBody({type: LoginDto})<br />@ApiResponse({status: 200, description: &#x27;Login successful&#x27;})<br />@ApiResponse({status: 401, description: &#x27;Login failed&#x27;})<br /></code>
+                </td>
+            </tr>
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="84"
+                                    class="link-to-prism">src/auth/auth.controller.ts:84</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>Login with email and password</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>loginDto</td>
+                                            <td>
+                                                            <code><a href="../classes/LoginDto.html" target="_self" >LoginDto</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                                <td>res</td>
+                                            <td>
+                                                            <code><a href="../interfaces/Response.html" target="_self" >Response</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>unknown</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="oauthCallback"></a>
+                    <span class="name">
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier">Async</span>
+                        <span ><b>oauthCallback</b></span>
+                        <a href="#oauthCallback"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>oauthCallback(provider: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>, code: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>, accessToken: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>, res: <a href="../interfaces/Response.html" target="_self">Response</a>)</code>
+                </td>
+            </tr>
+
+            <tr>
+                <td class="col-md-4">
+                    <b>Decorators : </b>
+                    <br />
+                    <code>@Public()<br />@Get(&#x27;callback&#x27;)<br />@ApiOperation({summary: &#x27;Handle OAuth callback&#x27;})<br />@ApiQuery({name: &#x27;provider&#x27;, required: true, description: &#x27;OAuth provider (google, facebook, apple)&#x27;})<br />@ApiQuery({name: &#x27;code&#x27;, required: false, description: &#x27;Authorization code&#x27;})<br />@ApiQuery({name: &#x27;access_token&#x27;, required: false, description: &#x27;Access token for implicit flow&#x27;})<br />@ApiResponse({status: 200, description: &#x27;OAuth callback successful&#x27;})<br />@ApiResponse({status: 400, description: &#x27;Missing provider or code/access_token&#x27;})<br />@ApiResponse({status: 401, description: &#x27;Cannot authenticate with provider&#x27;})<br /></code>
+                </td>
+            </tr>
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="134"
+                                    class="link-to-prism">src/auth/auth.controller.ts:134</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>Handles OAuth callback from providers</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>provider</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                                <td>code</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                                <td>accessToken</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                                <td>res</td>
+                                            <td>
+                                                            <code><a href="../interfaces/Response.html" target="_self" >Response</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>unknown</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="oauthLogin"></a>
+                    <span class="name">
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier">Async</span>
+                        <span ><b>oauthLogin</b></span>
+                        <a href="#oauthLogin"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>oauthLogin(oauthLoginDto: <a href="../classes/OAuthLoginDto.html" target="_self">OAuthLoginDto</a>, res: <a href="../interfaces/Response.html" target="_self">Response</a>)</code>
+                </td>
+            </tr>
+
+            <tr>
+                <td class="col-md-4">
+                    <b>Decorators : </b>
+                    <br />
+                    <code>@Public()<br />@Post(&#x27;login/oauth&#x27;)<br />@ApiOperation({summary: &#x27;Initiate OAuth login flow&#x27;})<br />@ApiBody({type: OAuthLoginDto})<br />@ApiResponse({status: 200, description: &#x27;OAuth URL generated&#x27;})<br />@ApiResponse({status: 401, description: &#x27;Cannot initiate OAuth login&#x27;})<br /></code>
+                </td>
+            </tr>
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="112"
+                                    class="link-to-prism">src/auth/auth.controller.ts:112</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>Initiates OAuth login flow by redirecting to the appropriate provider</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>oauthLoginDto</td>
+                                            <td>
+                                                            <code><a href="../classes/OAuthLoginDto.html" target="_self" >OAuthLoginDto</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                                <td>res</td>
+                                            <td>
+                                                            <code><a href="../interfaces/Response.html" target="_self" >Response</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>unknown</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="refreshToken"></a>
+                    <span class="name">
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier">Async</span>
+                        <span ><b>refreshToken</b></span>
+                        <a href="#refreshToken"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>refreshToken(refreshToken: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>)</code>
+                </td>
+            </tr>
+
+            <tr>
+                <td class="col-md-4">
+                    <b>Decorators : </b>
+                    <br />
+                    <code>@Public()<br />@Post(&#x27;refresh&#x27;)<br />@ApiOperation({summary: &#x27;Refresh JWT token&#x27;})<br />@ApiBody({type: RefreshTokenDto})<br />@ApiResponse({status: 200, description: &#x27;Token refreshed successfully&#x27;})<br /></code>
+                </td>
+            </tr>
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="214"
+                                    class="link-to-prism">src/auth/auth.controller.ts:214</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>Refreshes the JWT token using a refresh token</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>refreshToken</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>unknown</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="register"></a>
+                    <span class="name">
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier">Async</span>
+                        <span ><b>register</b></span>
+                        <a href="#register"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>register(registerDto: <a href="../classes/RegisterDto.html" target="_self">RegisterDto</a>, res: <a href="../interfaces/Response.html" target="_self">Response</a>)</code>
+                </td>
+            </tr>
+
+            <tr>
+                <td class="col-md-4">
+                    <b>Decorators : </b>
+                    <br />
+                    <code>@Public()<br />@Post(&#x27;register&#x27;)<br />@ApiOperation({summary: &#x27;Register a new user (staff)&#x27;})<br />@ApiBody({type: RegisterDto})<br />@ApiResponse({status: 201, description: &#x27;Registration successful&#x27;})<br />@ApiResponse({status: 400, description: &#x27;Registration failed&#x27;})<br /></code>
+                </td>
+            </tr>
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="50"
+                                    class="link-to-prism">src/auth/auth.controller.ts:50</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>Register a new user (staff) with email and password</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>registerDto</td>
+                                            <td>
+                                                            <code><a href="../classes/RegisterDto.html" target="_self" >RegisterDto</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                                <td>res</td>
+                                            <td>
+                                                            <code><a href="../interfaces/Response.html" target="_self" >Response</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>unknown</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="supabaseLogin"></a>
+                    <span class="name">
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier">Async</span>
+                        <span ><b>supabaseLogin</b></span>
+                        <a href="#supabaseLogin"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>supabaseLogin(body: literal type)</code>
+                </td>
+            </tr>
+
+            <tr>
+                <td class="col-md-4">
+                    <b>Decorators : </b>
+                    <br />
+                    <code>@Post(&#x27;supabase-login&#x27;)<br />@ApiOperation({summary: &#x27;Login with Supabase token&#x27;})<br />@ApiBody({schema: undefined})<br />@ApiResponse({status: 200, description: &#x27;Supabase login successful&#x27;})<br /></code>
+                </td>
+            </tr>
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="222"
+                                    class="link-to-prism">src/auth/auth.controller.ts:222</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>body</td>
+                                            <td>
+                                                        <code>literal type</code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>unknown</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</section>    </div>
+
+
+    <div class="tab-pane fade  tab-source-code" id="source">
+        <pre class="line-numbers compodoc-sourcecode"><code class="language-typescript">import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Query,
+  Req,
+  Res,
+  HttpStatus,
+  UnauthorizedException,
+  Logger,
+  UseGuards,
+} from &quot;@nestjs/common&quot;;
+import { Response } from &quot;express&quot;;
+import { AuthService } from &quot;./auth.service&quot;;
+import { OAuthLoginDto, RegisterDto, LoginDto, RefreshTokenDto } from &quot;./dto/auth.dto&quot;; // เพิ่ม RefreshTokenDto
+import { JwtAuthGuard } from &quot;./guards/jwt-auth.guard&quot;;
+import { ConfigService } from &quot;@nestjs/config&quot;;
+import { Public } from &quot;./decorators/public.decorator&quot;;
+import { UserRole } from &quot;@prisma/client&quot;;
+import { TokenPayload } from &quot;../common/interfaces/auth.interface&quot;;
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiBody,
+  ApiQuery,
+} from &quot;@nestjs/swagger&quot;;
+
+@ApiTags(&quot;Auth&quot;)
+@Controller(&quot;auth&quot;)
+export class AuthController {
+  private readonly logger &#x3D; new Logger(AuthController.name);
+
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+  ) {}
+
+  /**
+   * Register a new user (staff) with email and password
+   */
+  @Public()
+  @Post(&quot;register&quot;)
+  @ApiOperation({ summary: &quot;Register a new user (staff)&quot; })
+  @ApiBody({ type: RegisterDto })
+  @ApiResponse({ status: 201, description: &quot;Registration successful&quot; })
+  @ApiResponse({ status: 400, description: &quot;Registration failed&quot; })
+  async register(@Body() registerDto: RegisterDto, @Res() res: Response) {
+    try {
+      const user &#x3D; await this.authService.register(registerDto);
+      return res.status(HttpStatus.CREATED).json({
+        message: &quot;Registration successful&quot;,
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          phone: user.phone,
+          role: user.role,
+          status: user.status,
+          supabaseUserId: user.supabaseUserId,
+        },
+      });
+    } catch (error) {
+      this.logger.error(&#x60;Error during registration: ${error.message}&#x60;, error.stack);
+      return res.status(HttpStatus.BAD_REQUEST).json({
+        message: &quot;Registration failed&quot;,
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Login with email and password
+   */
+  @Public()
+  @Post(&quot;login&quot;)
+  @ApiOperation({ summary: &quot;Login with email and password&quot; })
+  @ApiBody({ type: LoginDto })
+  @ApiResponse({ status: 200, description: &quot;Login successful&quot; })
+  @ApiResponse({ status: 401, description: &quot;Login failed&quot; })
+  async login(@Body() loginDto: LoginDto, @Res() res: Response) {
+    try {
+      const authResult &#x3D; await this.authService.login(loginDto);
+      return res.status(HttpStatus.OK).json({
+        message: &quot;Login successful&quot;,
+        access_token: authResult.access_token,
+        refresh_token: authResult.refresh_token,
+        token_type: authResult.token_type,
+        expires_in: authResult.expires_in,
+      });
+    } catch (error) {
+      this.logger.error(&#x60;Error during login: ${error.message}&#x60;, error.stack);
+      return res.status(HttpStatus.UNAUTHORIZED).json({
+        message: &quot;Login failed&quot;,
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Initiates OAuth login flow by redirecting to the appropriate provider
+   */
+  @Public()
+  @Post(&quot;login/oauth&quot;)
+  @ApiOperation({ summary: &quot;Initiate OAuth login flow&quot; })
+  @ApiBody({ type: OAuthLoginDto })
+  @ApiResponse({ status: 200, description: &quot;OAuth URL generated&quot; })
+  @ApiResponse({ status: 401, description: &quot;Cannot initiate OAuth login&quot; })
+  async oauthLogin(@Body() oauthLoginDto: OAuthLoginDto, @Res() res: Response) {
+    try {
+      const authUrl &#x3D; await this.authService.generateAuthUrl(oauthLoginDto.provider);
+      return res.status(HttpStatus.OK).json({ url: authUrl });
+    } catch (error) {
+      this.logger.error(&#x60;Error in OAuth login: ${error.message}&#x60;, error.stack);
+      throw new UnauthorizedException(&quot;Cannot initiate OAuth login&quot;);
+    }
+  }
+
+  /**
+   * Handles OAuth callback from providers
+   */
+  @Public()
+  @Get(&quot;callback&quot;)
+  @ApiOperation({ summary: &quot;Handle OAuth callback&quot; })
+  @ApiQuery({ name: &quot;provider&quot;, required: true, description: &quot;OAuth provider (google, facebook, apple)&quot; })
+  @ApiQuery({ name: &quot;code&quot;, required: false, description: &quot;Authorization code&quot; })
+  @ApiQuery({ name: &quot;access_token&quot;, required: false, description: &quot;Access token for implicit flow&quot; })
+  @ApiResponse({ status: 200, description: &quot;OAuth callback successful&quot; })
+  @ApiResponse({ status: 400, description: &quot;Missing provider or code/access_token&quot; })
+  @ApiResponse({ status: 401, description: &quot;Cannot authenticate with provider&quot; })
+  async oauthCallback(
+    @Query(&quot;provider&quot;) provider: string,
+    @Query(&quot;code&quot;) code: string,
+    @Query(&quot;access_token&quot;) accessToken: string,
+    @Res() res: Response,
+  ) {
+    this.logger.debug(&#x60;Received callback -&gt; provider: ${provider}, code: ${code}, access_token: ${accessToken}&#x60;);
+
+    if (!provider) {
+      this.logger.warn(&quot;Missing provider in callback&quot;);
+      return res.status(HttpStatus.BAD_REQUEST).json({
+        message: &quot;Missing provider in callback&quot;,
+      });
+    }
+
+    try {
+      let authResult;
+      if (code) {
+        // Authorization Code Flow
+        authResult &#x3D; await this.authService.handleOAuthCallback(provider, code);
+      } else if (accessToken) {
+        // Implicit Flow: Use access_token directly
+        const supabaseUser &#x3D; await this.authService.getUserFromAccessToken(accessToken);
+        const user &#x3D; await this.authService.findOrCreateUser(supabaseUser, provider);
+        const payload: TokenPayload &#x3D; {
+          sub: user.id,
+          email: user.email,
+          role: user.role.toString(),
+        };
+        const jwtAccessToken &#x3D; this.authService.signJwt(payload);
+        authResult &#x3D; {
+          access_token: jwtAccessToken,
+          refresh_token: &quot;&quot;,
+          token_type: &quot;Bearer&quot;,
+          expires_in: parseInt(this.configService.get(&quot;JWT_EXPIRES_IN&quot;, &quot;604800&quot;)),
+        };
+      } else {
+        this.logger.warn(&quot;Missing code or access_token in callback&quot;);
+        return res.status(HttpStatus.BAD_REQUEST).json({
+          message: &quot;Missing code or access_token in callback&quot;,
+        });
+      }
+
+      return res.status(HttpStatus.OK).json({
+        message: &quot;OAuth callback successful&quot;,
+        access_token: authResult.access_token,
+        refresh_token: authResult.refresh_token,
+        token_type: authResult.token_type,
+        expires_in: authResult.expires_in,
+      });
+    } catch (error) {
+      this.logger.error(&#x60;Error in OAuth callback: ${error.message}&#x60;, error.stack);
+      return res.status(HttpStatus.UNAUTHORIZED).json({
+        message: &quot;Cannot authenticate with provider&quot;,
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Test endpoint to verify user authentication
+   */
+  @UseGuards(JwtAuthGuard)
+  @Get(&quot;me&quot;)
+  @ApiOperation({ summary: &quot;Get authenticated user profile&quot; })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: &quot;User profile retrieved&quot; })
+  @ApiResponse({ status: 401, description: &quot;Unauthorized&quot; })
+  getProfile(@Req() req) {
+    return req.user;
+  }
+
+  /**
+   * Refreshes the JWT token using a refresh token
+   */
+  @Public()
+  @Post(&quot;refresh&quot;)
+  @ApiOperation({ summary: &quot;Refresh JWT token&quot; })
+  @ApiBody({ type: RefreshTokenDto })
+  @ApiResponse({ status: 200, description: &quot;Token refreshed successfully&quot; })
+  async refreshToken(@Body(&quot;refreshToken&quot;) refreshToken: string) {
+    return this.authService.refreshToken(refreshToken);
+  }
+
+  @Post(&quot;supabase-login&quot;)
+  @ApiOperation({ summary: &quot;Login with Supabase token&quot; })
+  @ApiBody({ schema: { type: &quot;object&quot;, properties: { access_token: { type: &quot;string&quot; } } } })
+  @ApiResponse({ status: 200, description: &quot;Supabase login successful&quot; })
+  async supabaseLogin(@Body() body: { access_token: string }) {
+    return this.authService.loginWithSupabaseToken(body.access_token);
+  }
+}</code></pre>
+    </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                   </div><div class="search-results">
+    <div class="has-results">
+        <h1 class="search-results-title"><span class='search-results-count'></span> results matching "<span class='search-query'></span>"</h1>
+        <ul class="search-results-list"></ul>
+    </div>
+    <div class="no-results">
+        <h1 class="search-results-title">No results matching "<span class='search-query'></span>"</h1>
+    </div>
+</div>
+</div>
+               <!-- END CONTENT -->
+           </div>
+       </div>
+
+          <label class="dark-mode-switch">
+               <input type="checkbox">
+               <span class="slider">
+                    <svg class="slider-icon" viewBox="0 0 24 24" fill="none" height="20" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="20" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>
+                    </svg>
+               </span>
+          </label>
+
+       <script>
+            var COMPODOC_CURRENT_PAGE_DEPTH = 1;
+            var COMPODOC_CURRENT_PAGE_CONTEXT = 'controller';
+            var COMPODOC_CURRENT_PAGE_URL = 'AuthController.html';
+            var MAX_SEARCH_RESULTS = 15;
+       </script>
+
+       <script>
+               $darkModeToggleSwitchers = document.querySelectorAll('.dark-mode-switch input');
+               checkToggle(darkModeState);
+               if ($darkModeToggleSwitchers.length > 0) {
+                    for (var i = 0; i < $darkModeToggleSwitchers.length; i++) {
+                         $darkModeToggleSwitchers[i].addEventListener('change', function (event) {
+                              darkModeState = !darkModeState;
+                              toggleDarkMode(darkModeState);
+                         });
+                    }
+               }
+          </script>
+
+       <script src="../js/libs/custom-elements.min.js"></script>
+       <script src="../js/libs/lit-html.js"></script>
+
+       <script src="../js/menu-wc.js" defer></script>
+       <script nomodule src="../js/menu-wc_es5.js" defer></script>
+
+       <script src="../js/libs/bootstrap-native.js"></script>
+
+       <script src="../js/libs/es6-shim.min.js"></script>
+       <script src="../js/libs/EventDispatcher.js"></script>
+       <script src="../js/libs/promise.min.js"></script>
+
+       <script src="../js/compodoc.js"></script>
+
+       <script src="../js/tabs.js"></script>
+       <script src="../js/menu.js"></script>
+       <script src="../js/libs/clipboard.min.js"></script>
+       <script src="../js/libs/prism.js"></script>
+       <script src="../js/sourceCode.js"></script>
+          <script src="../js/search/search.js"></script>
+          <script src="../js/search/lunr.min.js"></script>
+          <script src="../js/search/search-lunr.js"></script>
+          <script src="../js/search/search_index.js"></script>
+       <script src="../js/lazy-load-graphs.js"></script>
+
+
+    </body>
+</html>

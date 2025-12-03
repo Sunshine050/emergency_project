@@ -1,0 +1,2280 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/": {
+      "get": {
+        "description": "Check if the server is running",
+        "operationId": "AppController_getHello",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Server is healthy"
+          }
+        },
+        "summary": "Root health check",
+        "tags": [
+          "Health Check"
+        ]
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "operationId": "AuthController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Registration successful"
+          },
+          "400": {
+            "description": "Registration failed"
+          },
+          "409": {
+            "description": "Email already in use"
+          }
+        },
+        "summary": "Register a new user (staff)",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful"
+          },
+          "401": {
+            "description": "Invalid email or password"
+          }
+        },
+        "summary": "Login with email and password",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/login/oauth": {
+      "post": {
+        "operationId": "AuthController_oauthLogin",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OAuthLoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OAuth URL generated"
+          },
+          "400": {
+            "description": "Invalid provider"
+          }
+        },
+        "summary": "Initiate OAuth login flow",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/callback": {
+      "get": {
+        "operationId": "AuthController_oauthCallback",
+        "parameters": [
+          {
+            "name": "provider",
+            "required": true,
+            "in": "query",
+            "description": "OAuth provider (google, facebook, apple)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "code",
+            "required": false,
+            "in": "query",
+            "description": "Authorization code",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "access_token",
+            "required": false,
+            "in": "query",
+            "description": "Access token for implicit flow",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OAuth callback successful"
+          },
+          "400": {
+            "description": "Missing provider or code/access_token"
+          },
+          "401": {
+            "description": "Cannot authenticate with provider"
+          }
+        },
+        "summary": "Handle OAuth callback",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "operationId": "AuthController_getProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "User profile retrieved"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get authenticated user profile",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/verify-token": {
+      "get": {
+        "operationId": "AuthController_verifyToken",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Token is valid"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Verify JWT token",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "operationId": "AuthController_refreshToken",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Token refreshed successfully"
+          },
+          "400": {
+            "description": "Missing refresh token"
+          }
+        },
+        "summary": "Refresh JWT token",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/supabase-login": {
+      "post": {
+        "operationId": "AuthController_supabaseLogin",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "access_token": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Supabase login successful"
+          },
+          "400": {
+            "description": "Missing access token"
+          }
+        },
+        "summary": "Login with Supabase token",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/users/me": {
+      "get": {
+        "description": "Get authenticated user profile",
+        "operationId": "UserController_getProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "User profile retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get my profile",
+        "tags": [
+          "Users"
+        ]
+      },
+      "put": {
+        "description": "Update authenticated user profile",
+        "operationId": "UserController_updateProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update my profile",
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/sos": {
+      "post": {
+        "description": "Create a new SOS emergency request (PATIENT or EMERGENCY_CENTER)",
+        "operationId": "SosController_createEmergencyRequest",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEmergencyRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Emergency request created successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create emergency request",
+        "tags": [
+          "SOS / Emergency Requests"
+        ]
+      },
+      "get": {
+        "description": "Get all emergency requests created by the authenticated patient",
+        "operationId": "SosController_getEmergencyRequests",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Emergency requests retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - PATIENT role required"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get my emergency requests",
+        "tags": [
+          "SOS / Emergency Requests"
+        ]
+      }
+    },
+    "/sos/{id}/assign": {
+      "post": {
+        "description": "Assign an emergency request to a specific hospital (EMERGENCY_CENTER only)",
+        "operationId": "SosController_assignToHospital",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Emergency request ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "hospitalId": {
+                    "type": "string",
+                    "description": "Hospital organization ID"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Emergency assigned to hospital successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - EMERGENCY_CENTER role required"
+          },
+          "404": {
+            "description": "Emergency request or hospital not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Assign emergency to hospital",
+        "tags": [
+          "SOS / Emergency Requests"
+        ]
+      }
+    },
+    "/sos/{id}/status": {
+      "put": {
+        "description": "Update the status of an emergency request",
+        "operationId": "SosController_updateStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Emergency request ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEmergencyStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Emergency status updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions"
+          },
+          "404": {
+            "description": "Emergency request not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update emergency status",
+        "tags": [
+          "SOS / Emergency Requests"
+        ]
+      }
+    },
+    "/sos/all": {
+      "get": {
+        "description": "Get all emergency requests in the system (staff only)",
+        "operationId": "SosController_getAllEmergencyRequests",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "All emergency requests retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - Staff role required"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get all emergency requests",
+        "tags": [
+          "SOS / Emergency Requests"
+        ]
+      }
+    },
+    "/sos/dashboard/active-emergencies": {
+      "get": {
+        "description": "Get active emergencies (filtered by hospital if HOSPITAL role)",
+        "operationId": "SosController_getActiveEmergencies",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Active emergencies retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - Staff role required"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get active emergencies for dashboard",
+        "tags": [
+          "SOS / Emergency Requests"
+        ]
+      }
+    },
+    "/sos/{id}": {
+      "get": {
+        "description": "Get a specific emergency request by ID (patient only)",
+        "operationId": "SosController_getEmergencyRequestById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Emergency request ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Emergency request retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - PATIENT role required"
+          },
+          "404": {
+            "description": "Emergency request not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get emergency request by ID",
+        "tags": [
+          "SOS / Emergency Requests"
+        ]
+      }
+    },
+    "/notifications": {
+      "get": {
+        "description": "Get all notifications for authenticated user",
+        "operationId": "NotificationController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Notifications retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get all notifications",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/notifications/{id}/read": {
+      "put": {
+        "description": "Mark a specific notification as read",
+        "operationId": "NotificationController_markAsRead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Notification ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification marked as read successfully"
+          },
+          "404": {
+            "description": "Notification not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark notification as read",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/notifications/read-all": {
+      "put": {
+        "description": "Mark all notifications as read for authenticated user",
+        "operationId": "NotificationController_markAllAsRead",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "All notifications marked as read successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark all notifications as read",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/notifications/{id}": {
+      "delete": {
+        "description": "Delete a specific notification",
+        "operationId": "NotificationController_deleteNotification",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Notification ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification deleted successfully"
+          },
+          "404": {
+            "description": "Notification not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete notification",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/hospitals": {
+      "post": {
+        "description": "Create a new hospital organization (ADMIN or HOSPITAL role)",
+        "operationId": "HospitalController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateHospitalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Hospital created successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create hospital",
+        "tags": [
+          "Hospitals"
+        ]
+      },
+      "get": {
+        "description": "Get list of all hospitals with optional search",
+        "operationId": "HospitalController_findAll",
+        "parameters": [
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Search query for hospital name or location",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Hospitals retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get all hospitals",
+        "tags": [
+          "Hospitals"
+        ]
+      }
+    },
+    "/hospitals/{id}": {
+      "get": {
+        "description": "Get detailed information about a specific hospital",
+        "operationId": "HospitalController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Hospital ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Hospital retrieved successfully"
+          },
+          "404": {
+            "description": "Hospital not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get hospital by ID",
+        "tags": [
+          "Hospitals"
+        ]
+      },
+      "put": {
+        "description": "Update hospital information",
+        "operationId": "HospitalController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Hospital ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateHospitalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Hospital updated successfully"
+          },
+          "404": {
+            "description": "Hospital not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update hospital",
+        "tags": [
+          "Hospitals"
+        ]
+      },
+      "delete": {
+        "description": "Delete a hospital (ADMIN only)",
+        "operationId": "HospitalController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Hospital ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Hospital deleted successfully"
+          },
+          "404": {
+            "description": "Hospital not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete hospital",
+        "tags": [
+          "Hospitals"
+        ]
+      }
+    },
+    "/hospitals/{id}/capacity": {
+      "put": {
+        "description": "Update bed capacity information (HOSPITAL role)",
+        "operationId": "HospitalController_updateCapacity",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Hospital ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateHospitalCapacityDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Capacity updated successfully"
+          },
+          "404": {
+            "description": "Hospital not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update hospital capacity",
+        "tags": [
+          "Hospitals"
+        ]
+      }
+    },
+    "/hospitals/{id}/accept-emergency": {
+      "post": {
+        "description": "Hospital accepts an emergency request",
+        "operationId": "HospitalController_acceptEmergency",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Hospital ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptEmergencyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Emergency accepted successfully"
+          },
+          "404": {
+            "description": "Hospital or emergency not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Accept emergency request",
+        "tags": [
+          "Hospitals"
+        ]
+      }
+    },
+    "/hospitals/nearby/{latitude}/{longitude}": {
+      "get": {
+        "description": "Find hospitals within a specified radius from coordinates",
+        "operationId": "HospitalController_findNearbyHospitals",
+        "parameters": [
+          {
+            "name": "latitude",
+            "required": true,
+            "in": "path",
+            "description": "Latitude coordinate",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "longitude",
+            "required": true,
+            "in": "path",
+            "description": "Longitude coordinate",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "radius",
+            "required": false,
+            "in": "query",
+            "description": "Search radius in kilometers",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Nearby hospitals retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Find nearby hospitals",
+        "tags": [
+          "Hospitals"
+        ]
+      }
+    },
+    "/hospitals/emergency-responses/{id}": {
+      "put": {
+        "description": "Update status of an emergency response",
+        "operationId": "HospitalController_updateEmergencyResponseStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Emergency response ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Emergency response status updated"
+          },
+          "404": {
+            "description": "Emergency response not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update emergency response status",
+        "tags": [
+          "Hospitals"
+        ]
+      },
+      "get": {
+        "description": "Retrieve details of an emergency response",
+        "operationId": "HospitalController_getEmergencyResponse",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Emergency response ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Emergency response retrieved"
+          },
+          "404": {
+            "description": "Emergency response not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get emergency response",
+        "tags": [
+          "Hospitals"
+        ]
+      }
+    },
+    "/hospitals/emergency-responses/{id}/notify-rescue": {
+      "post": {
+        "description": "Notify rescue team about an emergency response",
+        "operationId": "HospitalController_notifyRescueTeam",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Emergency response ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rescue team notified"
+          },
+          "404": {
+            "description": "Emergency response not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Notify rescue team",
+        "tags": [
+          "Hospitals"
+        ]
+      }
+    },
+    "/hospitals/emergency-responses/{id}/status": {
+      "patch": {
+        "description": "Patch status of an emergency response",
+        "operationId": "HospitalController_updateEmergencyResponseStatusManual",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Emergency response ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "New status",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Emergency response status updated"
+          },
+          "404": {
+            "description": "Emergency response not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Manually update emergency response status",
+        "tags": [
+          "Hospitals"
+        ]
+      }
+    },
+    "/hospitals/{id}/reports": {
+      "get": {
+        "description": "Get reports for a specific hospital",
+        "operationId": "HospitalController_getReports",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Hospital ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reports retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get hospital reports",
+        "tags": [
+          "Hospitals"
+        ]
+      }
+    },
+    "/hospitals/{id}/stats": {
+      "get": {
+        "description": "Get statistical data for a hospital",
+        "operationId": "HospitalController_getStats",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Hospital ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "period",
+            "required": false,
+            "in": "query",
+            "description": "Time period (day, week, month, year)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "startDate",
+            "required": false,
+            "in": "query",
+            "description": "Start date (ISO format)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "endDate",
+            "required": false,
+            "in": "query",
+            "description": "End date (ISO format)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Statistics retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get hospital statistics",
+        "tags": [
+          "Hospitals"
+        ]
+      }
+    },
+    "/hospitals/{id}/metrics": {
+      "get": {
+        "description": "Retrieve specific metric data for a hospital",
+        "operationId": "HospitalController_getMetrics",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Hospital ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "metric",
+            "required": true,
+            "in": "query",
+            "description": "Metric name",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "period",
+            "required": true,
+            "in": "query",
+            "description": "Time period",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "granularity",
+            "required": false,
+            "in": "query",
+            "description": "Granularity of data",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Metrics retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get hospital metrics",
+        "tags": [
+          "Hospitals"
+        ]
+      }
+    },
+    "/hospitals/{id}/reports/generate": {
+      "post": {
+        "description": "Generate a new report for the hospital",
+        "operationId": "HospitalController_generateReport",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Hospital ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateReportDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Report generated successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Generate hospital report",
+        "tags": [
+          "Hospitals"
+        ]
+      }
+    },
+    "/reports/{id}/status": {
+      "get": {
+        "description": "Get the generation status of a report",
+        "operationId": "ReportsController_getStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Report ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Report status retrieved successfully"
+          },
+          "404": {
+            "description": "Report not found"
+          }
+        },
+        "summary": "Get report status",
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/reports/{id}/download": {
+      "get": {
+        "description": "Download a completed report as PDF",
+        "operationId": "ReportsController_download",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Report ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Report downloaded successfully",
+            "content": {
+              "application/pdf": {}
+            }
+          },
+          "404": {
+            "description": "Report not found or not ready"
+          }
+        },
+        "summary": "Download report",
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/rescue-teams": {
+      "post": {
+        "description": "Create a new rescue team organization",
+        "operationId": "RescueController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRescueTeamDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Rescue team created successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create rescue team",
+        "tags": [
+          "Rescue Teams"
+        ]
+      },
+      "get": {
+        "description": "Get list of all rescue teams with optional search",
+        "operationId": "RescueController_findAll",
+        "parameters": [
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Search query for rescue team name or location",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rescue teams retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get all rescue teams",
+        "tags": [
+          "Rescue Teams"
+        ]
+      }
+    },
+    "/rescue-teams/{id}": {
+      "get": {
+        "description": "Get detailed information about a specific rescue team",
+        "operationId": "RescueController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Rescue team ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rescue team retrieved successfully"
+          },
+          "404": {
+            "description": "Rescue team not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get rescue team by ID",
+        "tags": [
+          "Rescue Teams"
+        ]
+      },
+      "put": {
+        "description": "Update rescue team information",
+        "operationId": "RescueController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Rescue team ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRescueTeamDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Rescue team updated successfully"
+          },
+          "404": {
+            "description": "Rescue team not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update rescue team",
+        "tags": [
+          "Rescue Teams"
+        ]
+      }
+    },
+    "/rescue-teams/{id}/status": {
+      "put": {
+        "description": "Update the availability status of a rescue team",
+        "operationId": "RescueController_updateStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Rescue team ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRescueTeamStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status updated successfully"
+          },
+          "404": {
+            "description": "Rescue team not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update rescue team status",
+        "tags": [
+          "Rescue Teams"
+        ]
+      }
+    },
+    "/rescue-teams/available": {
+      "get": {
+        "description": "Find available rescue teams within a specified radius",
+        "operationId": "RescueController_findAvailableTeams",
+        "parameters": [
+          {
+            "name": "latitude",
+            "required": true,
+            "in": "query",
+            "description": "Latitude coordinate",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "longitude",
+            "required": true,
+            "in": "query",
+            "description": "Longitude coordinate",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "radius",
+            "required": false,
+            "in": "query",
+            "description": "Search radius in kilometers (default: 10)",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Available rescue teams retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Find available rescue teams",
+        "tags": [
+          "Rescue Teams"
+        ]
+      }
+    },
+    "/rescue/dashboard/stats": {
+      "get": {
+        "description": "Get overall statistics for the rescue dashboard",
+        "operationId": "DashboardController_getStats",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Statistics retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - ADMIN or EMERGENCY_CENTER role required"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get dashboard statistics",
+        "tags": [
+          "Dashboard"
+        ]
+      }
+    },
+    "/rescue/dashboard/active-emergencies": {
+      "get": {
+        "description": "Get list of all active emergency cases",
+        "operationId": "DashboardController_getActiveEmergencies",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Active emergencies retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get active emergencies",
+        "tags": [
+          "Dashboard"
+        ]
+      }
+    },
+    "/rescue/dashboard/team-locations": {
+      "get": {
+        "description": "Get current locations of all rescue teams",
+        "operationId": "DashboardController_getTeamLocations",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Team locations retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get team locations",
+        "tags": [
+          "Dashboard"
+        ]
+      }
+    },
+    "/rescue/dashboard/hospital-capacities": {
+      "get": {
+        "description": "Get current bed capacity information for all hospitals",
+        "operationId": "DashboardController_getHospitalCapacities",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Hospital capacities retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get hospital capacities",
+        "tags": [
+          "Dashboard"
+        ]
+      }
+    },
+    "/rescue/dashboard/assign-case": {
+      "post": {
+        "description": "Assign an emergency case to a rescue team or hospital",
+        "operationId": "DashboardController_assignCase",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignCaseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Case assigned successfully"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "404": {
+            "description": "Case or team not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Assign emergency case",
+        "tags": [
+          "Dashboard"
+        ]
+      }
+    },
+    "/rescue/dashboard/cancel-case": {
+      "post": {
+        "description": "Cancel an active emergency case",
+        "operationId": "DashboardController_cancelCase",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelCaseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Case cancelled successfully"
+          },
+          "404": {
+            "description": "Case not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancel emergency case",
+        "tags": [
+          "Dashboard"
+        ]
+      }
+    },
+    "/api/settings/me": {
+      "get": {
+        "description": "Retrieve all settings for the authenticated user",
+        "operationId": "SettingsController_getMe",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "User settings retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get all user settings",
+        "tags": [
+          "Settings"
+        ]
+      },
+      "put": {
+        "description": "Update all or partial user settings (merges with existing)",
+        "operationId": "SettingsController_putMe",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSettingsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Settings updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update user settings",
+        "tags": [
+          "Settings"
+        ]
+      }
+    },
+    "/api/settings/me/{category}": {
+      "patch": {
+        "description": "Update a specific category (notification, system, communication, profile, emergency)",
+        "operationId": "SettingsController_patchCategory",
+        "parameters": [
+          {
+            "name": "category",
+            "required": true,
+            "in": "path",
+            "description": "Settings category (notification, system, communication, profile, emergency)",
+            "schema": {
+              "example": "notification",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Category settings updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update specific settings category",
+        "tags": [
+          "Settings"
+        ]
+      },
+      "get": {
+        "description": "Retrieve settings for a specific category",
+        "operationId": "SettingsController_getCategory",
+        "parameters": [
+          {
+            "name": "category",
+            "required": true,
+            "in": "path",
+            "description": "Settings category (notification, system, communication, profile, emergency)",
+            "schema": {
+              "example": "notification",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category settings retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get specific settings category",
+        "tags": [
+          "Settings"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Emergency Project API",
+    "description": "\n      ## Emergency Response Management System API\n      \n      This API provides comprehensive endpoints for managing emergency requests, hospitals, rescue teams, and related services.\n      \n      ### Features:\n      - **Authentication**: OAuth 2.0 (Google, Facebook, Apple) and Email/Password\n      - **Emergency Requests**: Create and manage SOS emergency requests\n      - **Hospital Management**: Hospital capacity, emergency acceptance\n      - **Rescue Teams**: Team management and assignment\n      - **Dashboard**: Real-time statistics and monitoring\n      - **Notifications**: Real-time push notifications\n      - **Reports**: Generate and download reports\n      - **User Settings**: Manage user preferences and settings\n      \n      ### Authentication:\n      Most endpoints require JWT Bearer token authentication. Use the /auth endpoints to obtain tokens.\n    ",
+    "version": "1.0",
+    "contact": {
+      "name": "Emergency Project Team",
+      "url": "https://emergency-project.com",
+      "email": "support@emergency-project.com"
+    }
+  },
+  "tags": [
+    {
+      "name": "Auth",
+      "description": "Authentication and authorization endpoints"
+    },
+    {
+      "name": "SOS / Emergency Requests",
+      "description": "Emergency request management"
+    },
+    {
+      "name": "Hospitals",
+      "description": "Hospital management and capacity"
+    },
+    {
+      "name": "Rescue Teams",
+      "description": "Rescue team management"
+    },
+    {
+      "name": "Dashboard",
+      "description": "Dashboard statistics and monitoring"
+    },
+    {
+      "name": "Notifications",
+      "description": "User notifications"
+    },
+    {
+      "name": "Reports",
+      "description": "Report generation and download"
+    },
+    {
+      "name": "Settings",
+      "description": "User settings and preferences"
+    },
+    {
+      "name": "Users",
+      "description": "User profile management"
+    },
+    {
+      "name": "Health Check",
+      "description": "API health check endpoints"
+    }
+  ],
+  "servers": [
+    {
+      "url": "http://localhost:3001",
+      "description": "Local Development Server"
+    },
+    {
+      "url": "https://api.emergency-project.com",
+      "description": "Production Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "JWT-auth": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http",
+        "name": "JWT",
+        "description": "Enter JWT token",
+        "in": "header"
+      }
+    },
+    "schemas": {
+      "RegisterDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "User email",
+            "example": "user@example.com"
+          },
+          "password": {
+            "type": "string",
+            "description": "User password",
+            "example": "password123"
+          },
+          "firstName": {
+            "type": "string",
+            "description": "User first name",
+            "example": "John"
+          },
+          "lastName": {
+            "type": "string",
+            "description": "User last name",
+            "example": "Doe"
+          },
+          "phone": {
+            "type": "string",
+            "description": "User phone number (optional)",
+            "example": "1234567890"
+          },
+          "role": {
+            "type": "string",
+            "description": "User role",
+            "enum": [
+              "PATIENT",
+              "EMERGENCY_CENTER",
+              "HOSPITAL",
+              "RESCUE_TEAM",
+              "ADMIN"
+            ],
+            "example": "EMERGENCY_CENTER"
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "firstName",
+          "lastName"
+        ]
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "User email",
+            "example": "user@example.com"
+          },
+          "password": {
+            "type": "string",
+            "description": "User password",
+            "example": "password123"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "OAuthLoginDto": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "description": "OAuth provider",
+            "enum": [
+              "google",
+              "facebook",
+              "apple"
+            ]
+          },
+          "redirectUrl": {
+            "type": "string",
+            "description": "Redirect URL after login (optional)"
+          }
+        },
+        "required": [
+          "provider"
+        ]
+      },
+      "RefreshTokenDto": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "description": "Refresh token"
+          }
+        },
+        "required": [
+          "refreshToken"
+        ]
+      },
+      "UpdateProfileDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateEmergencyRequestDto": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Description of the emergency"
+          },
+          "location": {
+            "type": "string",
+            "description": "Location address"
+          },
+          "latitude": {
+            "type": "number",
+            "description": "Latitude of the location"
+          },
+          "longitude": {
+            "type": "number",
+            "description": "Longitude of the location"
+          },
+          "grade": {
+            "type": "string",
+            "enum": [
+              "CRITICAL",
+              "URGENT",
+              "NON_URGENT"
+            ],
+            "description": "Grade of the emergency"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "ACCIDENT",
+              "MEDICAL",
+              "FIRE",
+              "CRIME",
+              "OTHER"
+            ],
+            "description": "Type of the emergency"
+          },
+          "medicalInfo": {
+            "type": "object",
+            "description": "Additional medical information"
+          },
+          "symptoms": {
+            "description": "Symptoms reported",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "patientId": {
+            "type": "string",
+            "description": "Patient ID (optional for EMERGENCY_CENTER)"
+          }
+        },
+        "required": [
+          "description",
+          "grade",
+          "type"
+        ]
+      },
+      "UpdateEmergencyStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "ASSIGNED",
+              "IN_PROGRESS",
+              "COMPLETED",
+              "CANCELLED"
+            ],
+            "description": "New status of the emergency"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Additional notes"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "CreateHospitalDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateHospitalDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateHospitalCapacityDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "AcceptEmergencyDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "GenerateReportDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateRescueTeamDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateRescueTeamDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateRescueTeamStatusDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "AssignCaseDto": {
+        "type": "object",
+        "properties": {
+          "caseId": {
+            "type": "string"
+          },
+          "assignedToId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "caseId",
+          "assignedToId"
+        ]
+      },
+      "CancelCaseDto": {
+        "type": "object",
+        "properties": {
+          "caseId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "caseId"
+        ]
+      },
+      "UpdateSettingsDto": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  }
+}
