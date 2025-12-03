@@ -8,20 +8,24 @@ import { User } from '@prisma/client';
 export class DashboardService {
   private readonly logger = new Logger(DashboardService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async getStats() {
+    this.logger.log('Fetching dashboard stats...');
+
     const totalEmergencies = await this.prisma.emergencyRequest.count();
     const activeEmergencies = await this.prisma.emergencyRequest.count({ where: { status: 'Active' } });
     const completedEmergencies = await this.prisma.emergencyRequest.count({ where: { status: 'Resolved' } });
     const cancelledEmergencies = await this.prisma.emergencyRequest.count({ where: { status: 'Cancelled' } });
     const activeTeams = await this.prisma.organization.count({ where: { type: 'RESCUE_TEAM', status: 'ACTIVE' } });
+    const connectedHospitals = await this.prisma.organization.count({ where: { type: 'HOSPITAL', status: 'ACTIVE' } });
+
     const hospitalBeds = await this.prisma.organization.aggregate({
       where: { type: 'HOSPITAL', status: 'ACTIVE' },
       _sum: { availableBeds: true },
     });
 
-    return {
+    const stats = {
       totalEmergencies,
       activeEmergencies,
       completedEmergencies,
@@ -29,10 +33,17 @@ export class DashboardService {
       activeTeams,
       averageResponseTime: 0,
       availableHospitalBeds: hospitalBeds._sum?.availableBeds ?? 0,
+      connectedHospitals,
+      criticalCases: 0, // Will be calculated if needed
     };
+
+    this.logger.log(`Stats: ${JSON.stringify(stats)}`);
+    return stats;
   }
 
   async getActiveEmergencies() {
+    this.logger.log('Fetching active emergencies...');
+
     const emergencyRequests = await this.prisma.emergencyRequest.findMany({
       where: { status: 'Active' },
       include: { patient: true },

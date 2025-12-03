@@ -15,30 +15,25 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 @Controller('notifications')
 @UseGuards(JwtAuthGuard)
 export class NotificationController {
-  constructor(private readonly notificationService: NotificationService) {}
+  constructor(private readonly notificationService: NotificationService) { }
 
-  // Notification controller methods will be implemented here
   @Get()
   findAll(@Query() query: any, @CurrentUser() user: any) {
-    // Will get all notifications for the current user
-    return { message: 'This endpoint will return all notifications for the current user' };
+    return this.notificationService.findAll(query, user.id);
   }
 
   @Get(':id')
   findOne(@Param('id') id: string, @CurrentUser() user: any) {
-    // Will get a specific notification
-    return { message: `This endpoint will return notification with id ${id}` };
+    return this.notificationService.findOne(id, user.id);
   }
 
   @Patch(':id/read')
   markAsRead(@Param('id') id: string, @CurrentUser() user: any) {
-    // Will mark a notification as read
-    return { message: `This endpoint will mark notification ${id} as read` };
+    return this.notificationService.markAsRead(id, user.id);
   }
 
   @Post('read-all')
   markAllAsRead(@CurrentUser() user: any) {
-    // Will mark all notifications as read
-    return { message: 'This endpoint will mark all notifications as read' };
+    return this.notificationService.markAllAsRead(user.id);
   }
 }

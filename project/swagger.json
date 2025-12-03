@@ -225,6 +225,26 @@
         }
       }
     },
+    "/api/settings/me": {
+      "get": {
+        "operationId": "SettingsController_getMe",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "put": {
+        "operationId": "SettingsController_updateMe",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/sos": {
       "post": {
         "operationId": "SosController_createEmergencyRequest",
